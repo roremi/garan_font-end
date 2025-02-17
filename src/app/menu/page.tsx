@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -10,10 +9,12 @@ import { Product } from '@/types/product';
 import { Category } from '@/types/Category';
 import Image from 'next/image';
 import { useToast } from "@/components/ui/use-toast";
-import { useCart } from '@/hooks/useCart';
+import { useCart } from '@/contexts/CartContext'; // Thay đổi import từ contexts
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function MenuPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
@@ -55,9 +56,7 @@ export default function MenuPage() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleAddToCart = (product: Product, e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    
+  const handleAddToCart = (product: Product) => {
     if (!product.isAvailable) {
       toast({
         variant: "destructive",
@@ -66,16 +65,23 @@ export default function MenuPage() {
       });
       return;
     }
-
+  
     addToCart({
-      ...product,
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
       quantity: 1
     });
-
+  
     toast({
       title: "Thêm vào giỏ hàng thành công",
       description: `Đã thêm ${product.name} vào giỏ hàng`,
     });
+  };
+
+  const handleNavigateToProduct = (productId: number) => {
+    router.push(`/products/${productId}`);
   };
 
   if (loading) {
@@ -152,39 +158,72 @@ export default function MenuPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              <Link 
-                href={`/products/${product.id}`} 
+              <div 
                 key={product.id}
-                className="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all"
               >
-                <div className="relative h-48">
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => handleNavigateToProduct(product.id)}
+                >
+                  <div className="h-48 bg-gray-100 relative overflow-hidden">
+                    {product.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                        Hình ảnh không có sẵn
+                      </div>
+                    )}
+                    {!product.isAvailable && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <span className="text-white font-bold">Hết hàng</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{product.description}</p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-lg font-bold text-orange-600">
-                      {new Intl.NumberFormat('vi-VN', {
-                        style: 'currency',
-                        currency: 'VND'
-                      }).format(product.price)}
-                    </span>
-                    <Button
-                      onClick={(e) => handleAddToCart(product, e)}
+                  <h3 
+                    className="font-bold mb-2 hover:text-orange-600 transition-colors cursor-pointer"
+                    onClick={() => handleNavigateToProduct(product.id)}
+                  >
+                    {product.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                    {product.description}
+                  </p>
+                  <p className="text-orange-600 font-bold mb-4">
+                    {new Intl.NumberFormat('vi-VN', {
+                      style: 'currency',
+                      currency: 'VND'
+                    }).format(product.price)}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      className="flex-1"
+                      variant="outline"
+                      onClick={() => handleNavigateToProduct(product.id)}
+                    >
+                      Chi tiết
+                    </Button>
+                    <Button 
+                      className="flex-1"
                       disabled={!product.isAvailable}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        product.isAvailable && handleAddToCart(product);
+                      }}
                     >
                       {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}
                     </Button>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>

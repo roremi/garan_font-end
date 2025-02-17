@@ -10,12 +10,15 @@ import { useProducts } from '@/hooks/useProducts';
 import { formatPrice } from '@/config/constants';
 import { Product } from '@/types/product';
 import { useRouter } from 'next/navigation'; 
+import { useCart } from '@/contexts/CartContext'; // Import useCart hook
+import { useToast } from "@/components/ui/use-toast"; // Import useToast
 
 export default function HomePage() {
   const router = useRouter();
   const { products, isLoading, error, refetch } = useProducts();
   const [email, setEmail] = useState('');
-
+  const { addToCart } = useCart(); // Sử dụng useCart hook
+  const { toast } = useToast(); // Sử dụng useToast
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     alert(`Đăng ký nhận tin thành công với email: ${email}`);
@@ -23,8 +26,29 @@ export default function HomePage() {
   };
 
   const handleAddToCart = (product: Product) => {
-    alert(`Đã thêm ${product.name} vào giỏ hàng`);
+    if (!product.isAvailable) {
+      toast({
+        variant: "destructive",
+        title: "Không thể thêm vào giỏ hàng",
+        description: "Sản phẩm hiện không còn hàng",
+      });
+      return;
+    }
+  
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      quantity: 1
+    });
+  
+    toast({
+      title: "Thêm vào giỏ hàng thành công",
+      description: `Đã thêm ${product.name} vào giỏ hàng`,
+    });
   };
+  
   const handleNavigateToProduct = (productId: number) => {
     router.push(`/products/${productId}`);
   };
@@ -379,7 +403,10 @@ export default function HomePage() {
                       <Button 
                         className="flex-1"
                         disabled={!product.isAvailable}
-                        onClick={() => product.isAvailable && handleAddToCart(product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          product.isAvailable && handleAddToCart(product);
+                        }}
                       >
                         {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}
                       </Button>

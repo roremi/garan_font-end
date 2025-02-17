@@ -1,5 +1,4 @@
-'use client';
-
+"use client"
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,11 +10,13 @@ import { formatPrice } from '@/config/constants';
 import { useToast } from "@/components/ui/use-toast";
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { useCart } from '@/contexts/CartContext'; // Thêm import CartContext
 
 export default function ProductDetail() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
+  const { addToCart } = useCart(); // Sử dụng CartContext
   
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +83,15 @@ export default function ProductDetail() {
       return;
     }
 
-    // Thêm logic xử lý giỏ hàng ở đây
+    // Thêm sản phẩm vào giỏ hàng với số lượng đã chọn
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      quantity: quantity
+    });
+
     toast({
       title: "Thêm vào giỏ hàng thành công",
       description: `Đã thêm ${quantity} ${product.name} vào giỏ hàng`,
@@ -96,7 +105,16 @@ export default function ProductDetail() {
         <main className="container mx-auto px-4 pt-24">
           <div className="animate-pulse">
             <div className="h-8 w-32 bg-gray-200 rounded mb-4"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="aspect-square bg-gray-200 rounded-lg"></div>
+              <div className="space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-10 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </div>
           </div>
         </main>
         <Footer />
@@ -110,7 +128,7 @@ export default function ProductDetail() {
         <Header />
         <main className="container mx-auto px-4 pt-24">
           <div className="text-center">
-            <p className="text-red-500">{error}</p>
+            <p className="text-red-500 mb-4">{error}</p>
             <Button onClick={() => router.back()} className="mt-4">
               Quay lại
             </Button>
@@ -138,13 +156,14 @@ export default function ProductDetail() {
 
           {product && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="relative aspect-square rounded-lg overflow-hidden">
+              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
                 <Image
                   src={product.imageUrl || '/images/placeholder.jpg'}
                   alt={product.name}
                   fill
                   className="object-cover"
                   priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
 
@@ -158,7 +177,10 @@ export default function ProductDetail() {
                 </p>
 
                 <div className="text-2xl font-bold text-orange-600">
-                  {formatPrice(product.price)}
+                  {new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND'
+                  }).format(product.price)}
                 </div>
 
                 <div className="flex items-center space-x-4">

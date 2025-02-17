@@ -1,34 +1,21 @@
-'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShoppingCart, User, Search, Menu, X, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-
-// Dữ liệu mẫu cho giỏ hàng
-const cartItems = [
-  {
-    id: 1,
-    name: 'Gà Rán Sốt Cay',
-    price: 89000,
-    quantity: 2,
-    image: '/images/spicy-chicken.jpg',
-  },
-  {
-    id: 2,
-    name: 'Khoai Tây Chiên (L)',
-    price: 39000,
-    quantity: 1,
-    image: '/images/french-fries.jpg',
-  },
-];
+import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { items, totalItems, totalAmount, removeFromCart: removeFromCart, updateQuantity } = useCart();
 
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const handleCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/giohang');
+  };
 
   return (
     <header className="fixed top-0 w-full bg-white shadow-sm z-50">
@@ -62,63 +49,100 @@ export default function Header() {
             <div className="relative"
                  onMouseEnter={() => setIsCartOpen(true)}
                  onMouseLeave={() => setIsCartOpen(false)}>
-              <Link href="/giohang">
-                <Button variant="ghost" size="icon" className="relative">
-                  <ShoppingCart className="h-5 w-5" />
-                  {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative"
+                onClick={handleCartClick}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
+              </Button>
 
               {/* Dropdown giỏ hàng */}
-              {isCartOpen && (
+              {isCartOpen && items.length > 0 && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-100">
                   <div className="p-4">
                     <h3 className="text-lg font-medium mb-4">Giỏ hàng</h3>
                     
-                    {cartItems.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">Giỏ hàng trống</p>
-                    ) : (
-                      <>
-                        <div className="space-y-4 max-h-60 overflow-auto">
-                          {cartItems.map((item) => (
-                            <div key={item.id} className="flex items-center gap-3">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="h-16 w-16 object-cover rounded"
-                              />
-                              <div className="flex-1">
-                                <h4 className="text-sm font-medium">{item.name}</h4>
-                                <div className="flex items-center justify-between mt-1">
-                                  <span className="text-sm text-gray-600">
-                                    SL: {item.quantity}
-                                  </span>
-                                  <span className="text-sm font-medium">
-                                    {item.price.toLocaleString()}đ
-                                  </span>
-                                </div>
+                    <div className="space-y-4 max-h-60 overflow-auto">
+                      {items.map((item) => (
+                        <div key={item.id} className="flex items-center gap-3">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="h-16 w-16 object-cover rounded"
+                          />
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium">{item.name}</h4>
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  className="text-gray-500 hover:text-gray-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateQuantity(item.id, item.quantity - 1);
+                                  }}
+                                >
+                                  -
+                                </button>
+                                <span className="text-sm">{item.quantity}</span>
+                                <button
+                                  className="text-gray-500 hover:text-gray-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateQuantity(item.id, item.quantity + 1);
+                                  }}
+                                >
+                                  +
+                                </button>
                               </div>
+                              <span className="text-sm font-medium">
+                                {new Intl.NumberFormat('vi-VN', {
+                                  style: 'currency',
+                                  currency: 'VND'
+                                }).format(item.price)}
+                              </span>
+                              <button
+                                className="text-red-500 hover:text-red-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeFromCart(item.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </div>
-                          ))}
-                        </div>
-
-                        <div className="border-t mt-4 pt-4">
-                          <div className="flex justify-between font-medium">
-                            <span>Tổng cộng:</span>
-                            <span>{subtotal.toLocaleString()}đ</span>
                           </div>
-                          <Link href="/giohang">
-                            <Button className="w-full mt-4">
-                              Xem giỏ hàng
-                            </Button>
-                          </Link>
                         </div>
-                      </>
-                    )}
+                      ))}
+                    </div>
+
+                    <div className="border-t mt-4 pt-4">
+                      <div className="flex justify-between font-medium">
+                        <span>Tổng cộng:</span>
+                        <span>
+                          {new Intl.NumberFormat('vi-VN', {
+                            style: 'currency',
+                            currency: 'VND'
+                          }).format(totalAmount)}
+                        </span>
+                      </div>
+                      <Button 
+                        className="w-full mt-4"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/giohang');
+                          setIsCartOpen(false);
+                        }}
+                      >
+                        Xem giỏ hàng
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -150,16 +174,19 @@ export default function Header() {
                     <User className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Link href="/cart">
-                  <Button variant="ghost" size="icon" className="relative">
-                    <ShoppingCart className="h-5 w-5" />
-                    {totalItems > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {totalItems}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={handleCartClick}
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                </Button>
               </div>
             </nav>
           </div>
