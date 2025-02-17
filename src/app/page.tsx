@@ -9,8 +9,10 @@ import Link from 'next/link';
 import { useProducts } from '@/hooks/useProducts';
 import { formatPrice } from '@/config/constants';
 import { Product } from '@/types/product';
+import { useRouter } from 'next/navigation'; 
 
 export default function HomePage() {
+  const router = useRouter();
   const { products, isLoading, error, refetch } = useProducts();
   const [email, setEmail] = useState('');
 
@@ -22,6 +24,9 @@ export default function HomePage() {
 
   const handleAddToCart = (product: Product) => {
     alert(`Đã thêm ${product.name} vào giỏ hàng`);
+  };
+  const handleNavigateToProduct = (productId: number) => {
+    router.push(`/products/${productId}`);
   };
 
   return (
@@ -325,14 +330,18 @@ export default function HomePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 {products.map((product) => (
-                  <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all">
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => handleNavigateToProduct(product.id)}
+                  >
                     <div className="h-48 bg-gray-100 relative overflow-hidden">
                       {product.imageUrl ? (
                         <Image
                           src={product.imageUrl}
                           alt={product.name}
                           fill
-                          className="object-cover"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-gray-400">
@@ -345,12 +354,30 @@ export default function HomePage() {
                         </div>
                       )}
                     </div>
-                    <div className="p-4">
-                      <h3 className="font-bold mb-2">{product.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">{product.description}</p>
-                      <p className="text-orange-600 font-bold mb-4">{formatPrice(product.price)}</p>
+                  </div>
+                  <div className="p-4">
+                    <h3 
+                      className="font-bold mb-2 hover:text-orange-600 transition-colors cursor-pointer"
+                      onClick={() => handleNavigateToProduct(product.id)}
+                    >
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                      {product.description}
+                    </p>
+                    <p className="text-orange-600 font-bold mb-4">
+                      {formatPrice(product.price)}
+                    </p>
+                    <div className="flex gap-2">
                       <Button 
-                        className="w-full"
+                        className="flex-1"
+                        variant="outline"
+                        onClick={() => handleNavigateToProduct(product.id)}
+                      >
+                        Chi tiết
+                      </Button>
+                      <Button 
+                        className="flex-1"
                         disabled={!product.isAvailable}
                         onClick={() => product.isAvailable && handleAddToCart(product)}
                       >
@@ -358,7 +385,8 @@ export default function HomePage() {
                       </Button>
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
               </div>
             )}
           </div>
