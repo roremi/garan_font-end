@@ -203,7 +203,7 @@ export default function Header() {
                         className="w-full mt-4"
                         onClick={(e) => {
                           e.preventDefault();
-                          router.push('/g');
+                          router.push('/giohang');
                           setIsCartOpen(false);
                         }}
                       >
