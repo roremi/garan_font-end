@@ -62,7 +62,7 @@ export default function Header() {
             <div className="relative"
                  onMouseEnter={() => setIsCartOpen(true)}
                  onMouseLeave={() => setIsCartOpen(false)}>
-              <Link href="/giaohang">
+              <Link href="/giohang">
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-5 w-5" />
                   {totalItems > 0 && (
@@ -111,7 +111,7 @@ export default function Header() {
                             <span>Tổng cộng:</span>
                             <span>{subtotal.toLocaleString()}đ</span>
                           </div>
-                          <Link href="/cart">
+                          <Link href="/giohang">
                             <Button className="w-full mt-4">
                               Xem giỏ hàng
                             </Button>
