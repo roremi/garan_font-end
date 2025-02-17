@@ -1,5 +1,5 @@
 import { Product } from '@/types/product';
-
+import { Category } from '@/types/Category';
 const API_URL = 'http://localhost:5000/api';
 
 export const api = {
@@ -79,6 +79,21 @@ deleteProduct: async (id: number): Promise<void> => {
 
 
 
+
+// lấy tất cả category
+
+async getCategories(): Promise<Category[]> {
+  try {
+    const response = await fetch(`${API_URL}/Category`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+},
 
   // ... các API khác
 };
