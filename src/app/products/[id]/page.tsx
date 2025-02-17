@@ -27,18 +27,22 @@ export default function ProductDetail() {
       try {
         const productId = params?.id;
         
+        // Kiểm tra id có tồn tại không
         if (!productId) {
-          throw new Error('ID sản phẩm không tồn tại');
+          throw new Error('Sản phẩm không hợp lệ');
         }
 
+        // Kiểm tra id có phải là số hợp lệ không
         const id = Number(productId);
         if (isNaN(id) || id <= 0) {
-          throw new Error('ID sản phẩm không hợp lệ');
+          throw new Error('Sản phẩm không hợp lệ');
         }
 
         const data = await api.getProductById(id);
-        if (!data) {
-          throw new Error('Không tìm thấy sản phẩm');
+        
+        // Kiểm tra data trả về
+        if (!data || Object.keys(data).length === 0) {
+          throw new Error('Sản phẩm không tồn tại');
         }
         
         setProduct(data);
