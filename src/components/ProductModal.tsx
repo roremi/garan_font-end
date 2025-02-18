@@ -12,8 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Product } from '@/types/product';
+import { Category } from '@/types/Category';
 import { api } from '@/services/api';
 
 interface ProductModalProps {
@@ -25,19 +33,59 @@ interface ProductModalProps {
 }
 
 export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: ProductModalProps) {
+  // State Management
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     description: '',
     price: 0,
     imageUrl: '',
     imageId: null,
-    categoryId: 1,
+    categoryId: undefined,
     isAvailable: true,
   });
+  const [categories, setCategories] = useState<Category[]>([]);
   const [imageLoading, setImageLoading] = useState(false);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Hooks
   const { toast } = useToast();
 
+  // Fetch categories when modal opens
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!isOpen) return;
+      
+      try {
+        setCategoryLoading(true);
+        const categoriesData = await api.getCategories();
+        setCategories(categoriesData);
+        
+        // Auto-select first category if none selected
+        if (!formData.categoryId && categoriesData.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            categoryId: categoriesData[0].id
+          }));
+        }
+      } catch (error) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách danh mục",
+          variant: "destructive",
+        });
+      } finally {
+        setCategoryLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [isOpen]);
+
+  // Reset form when modal opens/closes or mode changes
   useEffect(() => {
     if (mode === 'add') {
       setFormData({
@@ -46,7 +94,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
         price: 0,
         imageUrl: '',
         imageId: null,
-        categoryId: 1,
+        categoryId: categories.length > 0 ? categories[0].id : undefined,
         isAvailable: true,
       });
     } else if (product && mode === 'edit') {
@@ -55,8 +103,9 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
         price: Number(product.price)
       });
     }
-  }, [product, mode, isOpen]);
+  }, [product, mode, isOpen, categories]);
 
+  // Image Handlers
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -64,8 +113,6 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
     try {
       setImageLoading(true);
       const response = await api.uploadImage(file);
-      
-      // Construct full image URL
       const imageUrl = `${process.env.NEXT_PUBLIC_API_URL}/${response.filePath}`;
 
       setFormData(prev => ({
@@ -78,9 +125,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
         title: "Thành công",
         description: "Tải ảnh lên thành công",
       });
-
     } catch (error) {
-      console.error('Upload error:', error);
       toast({
         title: "Lỗi",
         description: error instanceof Error ? error.message : "Không thể tải ảnh lên",
@@ -119,6 +164,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
     }
   };
 
+  // Form Handlers
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
     const newPrice = parseFloat(rawValue);
@@ -128,15 +174,40 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const submitData = {
-      ...formData,
-      price: Number(formData.price),
-      categoryId: Number(formData.categoryId)
-    };
-    onSubmit(submitData);
-    onClose();
+    
+    if (!formData.categoryId) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn danh mục",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const submitData = {
+        ...formData,
+        price: Number(formData.price),
+        categoryId: Number(formData.categoryId)
+      };
+      await onSubmit(submitData);
+      onClose();
+      toast({
+        title: "Thành công",
+        description: mode === 'add' ? "Thêm sản phẩm thành công" : "Cập nhật sản phẩm thành công",
+      });
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Có lỗi xảy ra",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -208,63 +279,112 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
             </div>
           </div>
 
-          {/* Other form fields */}
-          <div>
+          {/* Product Name */}
+          <div className="space-y-2">
             <Label htmlFor="name">Tên sản phẩm</Label>
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Nhập tên sản phẩm"
               required
             />
           </div>
           
-          <div>
+          {/* Description */}
+          <div className="space-y-2">
             <Label htmlFor="description">Mô tả</Label>
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Nhập mô tả sản phẩm"
+              rows={3}
             />
           </div>
 
-          <div>
+          {/* Price */}
+          <div className="space-y-2">
             <Label htmlFor="price">Giá</Label>
             <Input
               id="price"
               type="text"
               value={formData.price?.toLocaleString('vi-VN')}
               onChange={handlePriceChange}
+              placeholder="Nhập giá sản phẩm"
               required
             />
           </div>
 
-          <div>
-            <Label htmlFor="categoryId">ID Danh mục</Label>
-            <Input
-              id="categoryId"
-              type="number"
-              min="1"
-              value={formData.categoryId}
-              onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
-              required
-            />
+          {/* Category Select */}
+          <div className="space-y-2">
+            <Label htmlFor="categoryId">Danh mục</Label>
+            <Select
+              value={formData.categoryId?.toString()}
+              onValueChange={(value) => 
+                setFormData(prev => ({ ...prev, categoryId: parseInt(value) }))
+              }
+              disabled={categoryLoading}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Chọn danh mục" />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryLoading ? (
+                  <SelectItem value="loading" disabled>
+                    <div className="flex items-center">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Đang tải...
+                    </div>
+                  </SelectItem>
+                ) : (
+                  categories.map((category) => (
+                    <SelectItem 
+                      key={category.id} 
+                      value={category.id.toString()}
+                    >
+                      {category.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
+          {/* Availability Switch */}
           <div className="flex items-center space-x-2">
             <Switch
               checked={formData.isAvailable}
-              onCheckedChange={(checked) => setFormData({ ...formData, isAvailable: checked })}
+              onCheckedChange={(checked) => 
+                setFormData(prev => ({ ...prev, isAvailable: checked }))
+              }
+              id="availability"
             />
-            <Label>Còn hàng</Label>
+            <Label htmlFor="availability">Còn hàng</Label>
           </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Hủy
             </Button>
-            <Button type="submit">
-              {mode === 'add' ? 'Thêm' : 'Cập nhật'}
+            <Button 
+              type="submit"
+              disabled={isSubmitting || categoryLoading || !formData.categoryId}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {mode === 'add' ? 'Đang thêm...' : 'Đang cập nhật...'}
+                </>
+              ) : (
+                mode === 'add' ? 'Thêm' : 'Cập nhật'
+              )}
             </Button>
           </div>
         </form>
