@@ -1,9 +1,17 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
-    domains: ['localhost'], // Nếu bạn dùng next/image
+    domains: ['localhost','https://localhost:5001'],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://localhost:5001/api/:path*',
+      },
+    ];
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

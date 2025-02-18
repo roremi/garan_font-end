@@ -6,6 +6,7 @@ export interface Product {
     imageUrl: string;
     categoryId: number;
     category: any;
+    imageId?: number | null;
     isAvailable: boolean;
   }
   

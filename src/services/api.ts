@@ -1,5 +1,7 @@
 import { Product } from '@/types/product';
 import { Category } from '@/types/Category';
+import { ImageUploadResponse } from '@/types/image';
+
 const API_URL = 'http://localhost:5000/api';
 
 export const api = {
@@ -95,5 +97,34 @@ async getCategories(): Promise<Category[]> {
   }
 },
 
+
+
+async uploadImage(file: File): Promise<ImageUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/Images/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Failed to upload image');
+  }
+
+  return response.json();
+},
+
+// API xóa ảnh
+async deleteImage(imageId: number): Promise<void> {
+  const response = await fetch(`${API_URL}/Images/${imageId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete image');
+  }
+}
   // ... các API khác
 };
