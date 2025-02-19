@@ -15,6 +15,12 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
 const SHIPPING_FEE = 30000;
+const generateOrderCode = () => {
+  const timestamp = new Date().getTime();
+  const random = Math.floor(Math.random() * 1000);
+  return `DH${timestamp}${random}`;
+};
+
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -53,55 +59,61 @@ export default function CheckoutPage() {
     }
     
     try {
+      const orderCode = generateOrderCode();
+      
       // Tạo order
       const orderData = {
-        idUser: 1, // Có thể lấy từ context auth nếu có
+        idUser: 1,
         nameCustomer: formData.fullName,
         phone: formData.phone,
         email: formData.email,
         address: formData.address,
         note: formData.note,
         paymentMethod: formData.paymentMethod,
+        orderCode: orderCode, // Thêm mã đơn hàng
         createAt: new Date().toISOString(),
         status: 0,
         total: total
       };
   
       const orderResponse = await api.createOrder(orderData);
-      console.log('Order Response:', orderResponse); // Log để kiểm tra
   
-      // Kiểm tra kỹ response
       if (!orderResponse.data || !orderResponse.data.id) {
-        console.error('Invalid order response:', orderResponse);
         throw new Error('Không nhận được ID của đơn hàng');
       }
   
       const orderId = orderResponse.data.id;
-      console.log('New Order ID:', orderId); // Log để kiểm tra
   
-      // Tạo order details với orderId mới
+      // Tạo order details
       for (const item of items) {
         const detailData = {
-          orderId: orderId, // Sử dụng orderId mới
+          orderId: orderId,
           productId: item.id,
           quantity: item.quantity,
           price: item.price,
           createAt: new Date().toISOString()
         };
-  
-        console.log('Creating detail with data:', detailData); // Log để kiểm tra
-        const detailResponse = await api.createOrderDetail(detailData);
-        console.log('Detail Response:', detailResponse); // Log để kiểm tra
+        await api.createOrderDetail(detailData);
       }
   
-      // Xử lý thành công
-      clearCart();
-      toast({
-        title: "Đặt hàng thành công",
-        description: "Cảm ơn bạn đã đặt hàng!",
-      });
-  
-      router.push('/');
+      // Xử lý dựa trên phương thức thanh toán
+      if (formData.paymentMethod === 'BANKING') {
+        // Tạo URL VietQR theo mẫu mới
+        const vietQRUrl = `https://img.vietqr.io/image/vietcombank-113366668888-compact2.jpg?` + 
+          `amount=${total}&` +
+          `addInfo=${encodeURIComponent(`DH${orderCode}`)}&` +
+          `accountName=${encodeURIComponent('TRAN TAN KHAI')}`;
+      
+        router.push(`/payment?orderId=${orderId}&qrCode=${encodeURIComponent(vietQRUrl)}&amount=${total}`);
+      } else {
+        // Thanh toán COD
+        clearCart();
+        toast({
+          title: "Đặt hàng thành công",
+          description: "Cảm ơn bạn đã đặt hàng!",
+        });
+        router.push('/');
+      }
   
     } catch (error) {
       console.error('Error:', error);
@@ -112,6 +124,7 @@ export default function CheckoutPage() {
       });
     }
   };
+  
   
   
 
