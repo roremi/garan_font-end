@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { api } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
@@ -47,60 +48,72 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm('Bạn có chắc chắn muốn đặt hàng?')) {
+      return;
+    }
     
-    // Kiểm tra giỏ hàng có trống không
-    if (items.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Giỏ hàng của bạn đang trống",
-      });
-      return;
-    }
-
-    // Validate form
-    if (!formData.fullName || !formData.phone || !formData.email || !formData.address) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin",
-      });
-      return;
-    }
-
     try {
-      // TODO: Gửi đơn hàng lên server
-      const order = {
-        ...formData,
-        items,
-        subtotal,
-        shippingFee: SHIPPING_FEE,
-        total,
-        orderDate: new Date().toISOString()
+      // Tạo order
+      const orderData = {
+        idUser: 1, // Có thể lấy từ context auth nếu có
+        nameCustomer: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        note: formData.note,
+        paymentMethod: formData.paymentMethod,
+        createAt: new Date().toISOString(),
+        status: 0,
+        total: total
       };
-
-      console.log('Order details:', order);
-      
-      // Clear cart sau khi đặt hàng thành công
+  
+      const orderResponse = await api.createOrder(orderData);
+      console.log('Order Response:', orderResponse); // Log để kiểm tra
+  
+      // Kiểm tra kỹ response
+      if (!orderResponse.data || !orderResponse.data.id) {
+        console.error('Invalid order response:', orderResponse);
+        throw new Error('Không nhận được ID của đơn hàng');
+      }
+  
+      const orderId = orderResponse.data.id;
+      console.log('New Order ID:', orderId); // Log để kiểm tra
+  
+      // Tạo order details với orderId mới
+      for (const item of items) {
+        const detailData = {
+          orderId: orderId, // Sử dụng orderId mới
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          createAt: new Date().toISOString()
+        };
+  
+        console.log('Creating detail with data:', detailData); // Log để kiểm tra
+        const detailResponse = await api.createOrderDetail(detailData);
+        console.log('Detail Response:', detailResponse); // Log để kiểm tra
+      }
+  
+      // Xử lý thành công
       clearCart();
-      
       toast({
         title: "Đặt hàng thành công",
-        description: "Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ liên hệ sớm nhất!",
+        description: "Cảm ơn bạn đã đặt hàng!",
       });
-
-      // Chuyển về trang chủ
+  
       router.push('/');
-      
+  
     } catch (error) {
-      console.error('Error placing order:', error);
+      console.error('Error:', error);
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại sau.",
+        description: "Có lỗi xảy ra khi đặt hàng",
       });
     }
   };
+  
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
