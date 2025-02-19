@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-// import { Toaster } from "@/components/ui/toaster"
-import { Toaster } from 'react-hot-toast';
-
+import { Toaster } from 'sonner';
 import { CartProvider } from '@/contexts/CartContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -22,10 +21,26 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-      <CartProvider>
-        {children}
+      <AuthProvider>
+        <CartProvider>
+          {children}
         </CartProvider>
-        <Toaster /> {/* Di chuyển Toaster vào cuối body */}
+        </AuthProvider>
+        <Toaster 
+          position="top-center" 
+          richColors 
+          closeButton
+          theme="light"
+          toastOptions={{
+            // Tùy chỉnh style mặc định cho toast
+            style: {
+              background: 'white',
+              color: 'black',
+            },
+            // Thời gian hiển thị mặc định
+            duration: 4000,
+          }}
+        />
       </body>
     </html>
   );

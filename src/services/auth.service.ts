@@ -1,8 +1,7 @@
-// services/auth.service.ts
-
 import { LoginData, RegisterData, UserProfile, AuthResponse } from '@/types/auth';
+import { storage } from '@/utils/storage';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = 'https://localhost:5001/api';
 
 class AuthService {
   async register(data: RegisterData): Promise<AuthResponse> {
@@ -26,10 +25,9 @@ class AuthService {
     }
   }
 
-  async login(data: LoginData, isAdmin: boolean = false): Promise<AuthResponse> {
+  async login(data: LoginData): Promise<AuthResponse> {
     try {
-      const endpoint = isAdmin ? 'admin-login' : 'customer-login';
-      const response = await fetch(`${API_URL}/User/${endpoint}`, {
+      const response = await fetch(`${API_URL}/User/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,8 +41,9 @@ class AuthService {
       }
 
       const result = await response.json();
-      // Lưu token vào localStorage
-      localStorage.setItem('token', result.token);
+      if (result.token) {
+        storage.setItem('token', result.token);
+      }
       return result;
     } catch (error) {
       throw error;
@@ -53,28 +52,43 @@ class AuthService {
 
   async getProfile(): Promise<UserProfile> {
     try {
-      const token = localStorage.getItem('token');
+      const token = storage.getItem('token');
       if (!token) throw new Error('Không tìm thấy token');
-
+  
       const response = await fetch(`${API_URL}/User/profile`, {
+        method: 'GET', // Thêm method rõ ràng
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          // 'Origin': 'http://localhost:3000' // Thêm origin header
         },
+        mode: 'cors', // Thêm CORS mode
+        credentials: 'include' // Cho phép gửi credentials
       });
-
+      //  console.log(token)
       if (!response.ok) {
+        if (response.status === 401) {
+          console.error('Token không hợp lệ hoặc hết hạn');
+          this.logout();
+          throw new Error('Phiên đăng nhập đã hết hạn');
+        }
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
         throw new Error('Không thể lấy thông tin người dùng');
       }
-
+  
       return await response.json();
     } catch (error) {
+      console.error('GetProfile Error:', error);
       throw error;
     }
   }
+  
 
   async updateProfile(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
     try {
-      const token = localStorage.getItem('token');
+      const token = storage.getItem('token');
       if (!token) throw new Error('Không tìm thấy token');
 
       const response = await fetch(`${API_URL}/User/update/${id}`, {
@@ -87,7 +101,8 @@ class AuthService {
       });
 
       if (!response.ok) {
-        throw new Error('Cập nhật thông tin thất bại');
+        const error = await response.text();
+        throw new Error(error || 'Cập nhật thông tin thất bại');
       }
 
       return await response.json();
@@ -96,9 +111,9 @@ class AuthService {
     }
   }
 
-  async changePassword(data: { oldPassword: string; newPassword: string }): Promise<void> {
+  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
     try {
-      const token = localStorage.getItem('token');
+      const token = storage.getItem('token');
       if (!token) throw new Error('Không tìm thấy token');
 
       const response = await fetch(`${API_URL}/User/change-password`, {
@@ -107,7 +122,7 @@ class AuthService {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ oldPassword, newPassword }),
       });
 
       if (!response.ok) {
@@ -140,7 +155,7 @@ class AuthService {
 
   async deleteUser(id: number): Promise<void> {
     try {
-      const token = localStorage.getItem('token');
+      const token = storage.getItem('token');
       if (!token) throw new Error('Không tìm thấy token');
 
       const response = await fetch(`${API_URL}/User/${id}`, {
@@ -159,8 +174,37 @@ class AuthService {
     }
   }
 
+  async getAllProfiles(): Promise<UserProfile[]> {
+    try {
+      const token = storage.getItem('token');
+      if (!token) throw new Error('Không tìm thấy token');
+
+      const response = await fetch(`${API_URL}/User/all-profiles`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Không thể lấy danh sách người dùng');
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  }
+
   logout(): void {
-    localStorage.removeItem('token');
+    storage.removeItem('token');
+  }
+
+  isAuthenticated(): boolean {
+    return !!storage.getItem('token');
+  }
+
+  getToken(): string | null {
+    return storage.getItem('token');
   }
 }
 

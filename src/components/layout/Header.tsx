@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ShoppingCart, User, Search, Menu, X, Trash2, LogOut, History, UserCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,24 +15,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Thêm interface cho user
-interface UserType {
-  name: string;
-  email: string;
-}
-
 export default function Header() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { items, totalItems, totalAmount, removeFromCart, updateQuantity } = useCart();
-
-  // TODO: Thay thế bằng logic auth thực tế
-  const isLoggedIn = false; // Giả lập user đã đăng nhập
-  const user: UserType = {
-    name: "Nguyễn Văn A",
-    email: "nguyenvana@example.com"
-  };
+  const { user, logout } = useAuth(); // Sử dụng useAuth hook
 
   const handleCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -38,22 +28,31 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    // TODO: Thêm logic đăng xuất thực tế
-    router.push('/auth/login');
+    logout();
+    toast.success('Đăng xuất thành công');
+    router.push('/');
   };
 
   const UserDropdown = () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
-          <User className="h-5 w-5" />
+          {user?.avatar ? (
+            <img 
+              src={user.avatar} 
+              alt={user.fullName} 
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <User className="h-5 w-5" />
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end">
-        {isLoggedIn ? (
+        {user ? (
           <>
             <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">Xin chào, {user.name}</p>
+              <p className="text-sm font-medium">Xin chào, {user.fullName}</p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
             </div>
             <DropdownMenuSeparator />
@@ -226,59 +225,59 @@ export default function Header() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden py-4">
-            <nav className="flex flex-col space-y-4">
-              <Link href="/" className="text-gray-700 hover:text-orange-600">Trang chủ</Link>
-              <Link href="/menu" className="text-gray-700 hover:text-orange-600">Thực đơn</Link>
-              <Link href="/about" className="text-gray-700 hover:text-orange-600">Về chúng tôi</Link>
-              <Link href="/contact" className="text-gray-700 hover:text-orange-600">Liên hệ</Link>
-              <div className="flex space-x-4">
-                <Button variant="ghost" size="icon">
-                  <Search className="h-5 w-5" />
-                </Button>
-                {isLoggedIn ? (
-                  <div className="flex flex-col space-y-2">
-                    <div className="px-2">
-                      <p className="text-sm font-medium">Xin chào, {user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                    <Link href="/profile" className="text-gray-700 hover:text-orange-600">
-                      Hồ sơ cá nhân
-                    </Link>
-                    <Link href="/orders" className="text-gray-700 hover:text-orange-600">
-                      Lịch sử đơn hàng
-                    </Link>
-                    <Button variant="ghost" onClick={handleLogout}>
-                      Đăng xuất
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex space-x-4">
-                    <Link href="/auth/login">
-                      <Button variant="ghost">Đăng nhập</Button>
-                    </Link>
-                    <Link href="/auth/register">
-                      <Button variant="ghost">Đăng ký</Button>
-                    </Link>
-                  </div>
-                )}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="relative"
-                  onClick={handleCartClick}
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Button>
+    <div className="md:hidden py-4">
+      <nav className="flex flex-col space-y-4">
+        <Link href="/" className="text-gray-700 hover:text-orange-600">Trang chủ</Link>
+        <Link href="/menu" className="text-gray-700 hover:text-orange-600">Thực đơn</Link>
+        <Link href="/about" className="text-gray-700 hover:text-orange-600">Về chúng tôi</Link>
+        <Link href="/contact" className="text-gray-700 hover:text-orange-600">Liên hệ</Link>
+        <div className="flex space-x-4">
+          <Button variant="ghost" size="icon">
+            <Search className="h-5 w-5" />
+          </Button>
+          {user ? (
+            <div className="flex flex-col space-y-2">
+              <div className="px-2">
+                <p className="text-sm font-medium">Xin chào, {user.fullName}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
-            </nav>
-          </div>
-        )}
+              <Link href="/profile" className="text-gray-700 hover:text-orange-600">
+                Hồ sơ cá nhân
+              </Link>
+              <Link href="/history" className="text-gray-700 hover:text-orange-600">
+                Lịch sử đơn hàng
+              </Link>
+              <Button variant="ghost" onClick={handleLogout}>
+                Đăng xuất
+              </Button>
+            </div>
+          ) : (
+            <div className="flex space-x-4">
+              <Link href="/auth/login">
+                <Button variant="ghost">Đăng nhập</Button>
+              </Link>
+              <Link href="/auth/register">
+                <Button variant="ghost">Đăng ký</Button>
+              </Link>
+            </div>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative"
+            onClick={handleCartClick}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </Button>
+        </div>
+      </nav>
+    </div>
+  )}
       </div>
     </header>
   );
