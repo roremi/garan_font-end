@@ -61,7 +61,7 @@ export default function Header() {
               <UserCircle className="mr-2 h-4 w-4" />
               <span>Hồ sơ cá nhân</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/orders')}>
+            <DropdownMenuItem onClick={() => router.push('/history')}>
               <History className="mr-2 h-4 w-4" />
               <span>Lịch sử đơn hàng</span>
             </DropdownMenuItem>
