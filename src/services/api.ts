@@ -125,6 +125,76 @@ async deleteImage(imageId: number): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete image');
   }
+},
+// order
+// Tạo order mới
+async createOrder(orderData: any) {
+  const response = await fetch(`${API_URL}/Order/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(orderData)
+  });
+  
+  const data = await response.json();
+  console.log('Create Order API Response:', data); // Log để kiểm tra
+  
+  if (!data.status || data.status !== 200) {
+    throw new Error(data.message || 'Failed to create order');
+  }
+  return data;
+},
+
+async createOrderDetail(detailData: any) {
+  const response = await fetch(`${API_URL}/DetailOrder/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(detailData)
+  });
+  
+  const data = await response.json();
+  console.log('Create Detail API Response:', data); // Log để kiểm tra
+  
+  if (!data.status || data.status !== 200) {
+    throw new Error(data.message || 'Failed to create order detail');
+  }
+  return data;
+},
+async getAllOrders() {
+  const response = await fetch(`${API_URL}/Order/all`);
+  const data = await response.json();
+  
+  // console.log('Raw API response:', data); // Thêm dòng này
+  
+  if (!data.status || data.status !== 200) {
+    throw new Error(data.message || 'Failed to fetch orders');
+  }
+  
+  // console.log('Processed data:', data.data); // Thêm dòng này
+  return data.data;
+},
+
+
+async getOrderDetails(orderId: number) {
+  const response = await fetch(`${API_URL}/DetailOrder/getAllByOrder?idOrder=${orderId}`);
+  const data = await response.json();
+  
+  if (!data.status || data.status !== 200) {
+    throw new Error(data.message || 'Failed to fetch order details');
+  }
+  return data.data;
+},
+
+async confirmOrder(orderId: number, status: number) {
+  const response = await fetch(`${API_URL}/Order/confirmOrder?idOrder=${orderId}&status=${status}`);
+  const data = await response.json();
+  
+  if (!data.status || data.status !== 200) {
+    throw new Error(data.message || 'Failed to confirm order');
+  }
+  return data;
 }
-  // ... các API khác
 };
