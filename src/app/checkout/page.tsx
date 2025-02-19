@@ -40,7 +40,10 @@ export default function CheckoutPage() {
   const subtotal = items.reduce((sum, item) => 
     sum + item.price * item.quantity, 0
   );
-  const total = subtotal + (items.length > 0 ? SHIPPING_FEE : 0);
+  // Cách 3: Sử dụng parseInt()
+  const total = Math.round(subtotal + (items.length > 0 ? SHIPPING_FEE : 0));
+
+
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -99,9 +102,9 @@ export default function CheckoutPage() {
       // Xử lý dựa trên phương thức thanh toán
       if (formData.paymentMethod === 'BANKING') {
         // Tạo URL VietQR theo mẫu mới
-        const vietQRUrl = `https://img.vietqr.io/image/vietcombank-113366668888-compact2.jpg?` + 
+        const vietQRUrl = `https://img.vietqr.io/image/mbbank-0565251240-compact2.jpg?` + 
           `amount=${total}&` +
-          `addInfo=${encodeURIComponent(`DH${orderCode}`)}&` +
+          `addInfo=${(`GARANCUCTAC${orderId}`)}&` +
           `accountName=${encodeURIComponent('TRAN TAN KHAI')}`;
       
         router.push(`/payment?orderId=${orderId}&qrCode=${encodeURIComponent(vietQRUrl)}&amount=${total}`);
