@@ -1,12 +1,146 @@
-// src/app/auth/register/page.tsx
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Mail, Lock, User, ArrowLeft, Facebook, Github } from 'lucide-react';
+import { Mail, Lock, User, ArrowLeft, Facebook, Github, Phone, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { authService } from '@/services/auth.service';
+import { toast } from 'react-hot-toast';
+
+interface RegisterFormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  fullName: string;
+  phoneNumber: string;
+  address: string;
+  username: string;
+  terms: boolean;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  fullName?: string;
+  phoneNumber?: string;
+  address?: string;
+  username?: string;
+  terms?: string;
+}
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<RegisterFormData>({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    fullName: '',
+    phoneNumber: '',
+    address: '',
+    username: '',
+    terms: false
+  });
+
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email) {
+      newErrors.email = 'Email là bắt buộc';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Email không hợp lệ';
+    }
+
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = 'Mật khẩu là bắt buộc';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    }
+
+    // Confirm password
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+    }
+
+    // Full name
+    if (!formData.fullName) {
+      newErrors.fullName = 'Họ tên là bắt buộc';
+    }
+
+    // Phone number (VN format)
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Số điện thoại là bắt buộc';
+    } else if (!phoneRegex.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
+    }
+
+    // Address
+    if (!formData.address) {
+      newErrors.address = 'Địa chỉ là bắt buộc';
+    }
+
+    // Terms
+    if (!formData.terms) {
+      newErrors.terms = 'Bạn phải đồng ý với điều khoản sử dụng';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Vui lòng kiểm tra lại thông tin đăng ký');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      await authService.register({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        address: formData.address,
+        username: formData.email
+      });
+      
+      toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Register error:', error);
+      toast.error(error instanceof Error ? error.message : 'Đăng ký thất bại');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -27,9 +161,9 @@ export default function RegisterPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" action="#" method="POST">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
                 Họ và tên
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -37,14 +171,70 @@ export default function RegisterPage() {
                   <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="name"
-                  name="name"
+                  id="fullName"
+                  name="fullName"
                   type="text"
-                  required
-                  className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 p-2.5 border"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
+                    errors.fullName ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-orange-500 focus:border-orange-500`}
                   placeholder="Nguyễn Văn A"
                 />
               </div>
+              {errors.fullName && (
+                <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                Số điện thoại
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
+                    errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-orange-500 focus:border-orange-500`}
+                  placeholder="0123456789"
+                />
+              </div>
+              {errors.phoneNumber && (
+                <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                Địa chỉ
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
+                    errors.address ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-orange-500 focus:border-orange-500`}
+                  placeholder="Địa chỉ của bạn"
+                />
+              </div>
+              {errors.address && (
+                <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+              )}
             </div>
 
             <div>
@@ -59,12 +249,17 @@ export default function RegisterPage() {
                   id="email"
                   name="email"
                   type="email"
-                  autoComplete="email"
-                  required
-                  className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 p-2.5 border"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
+                    errors.email ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-orange-500 focus:border-orange-500`}
                   placeholder="you@example.com"
                 />
               </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             <div>
@@ -79,11 +274,17 @@ export default function RegisterPage() {
                   id="password"
                   name="password"
                   type="password"
-                  required
-                  className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 p-2.5 border"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
+                    errors.password ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-orange-500 focus:border-orange-500`}
                   placeholder="••••••••"
                 />
               </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
             <div>
@@ -98,11 +299,17 @@ export default function RegisterPage() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
-                  required
-                  className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 p-2.5 border"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
+                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                  } focus:ring-orange-500 focus:border-orange-500`}
                   placeholder="••••••••"
                 />
               </div>
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <div className="flex items-center">
@@ -110,8 +317,11 @@ export default function RegisterPage() {
                 id="terms"
                 name="terms"
                 type="checkbox"
-                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-                required
+                checked={formData.terms}
+                onChange={handleChange}
+                className={`h-4 w-4 focus:ring-orange-500 border-gray-300 rounded ${
+                  errors.terms ? 'border-red-500' : ''
+                }`}
               />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
                 Tôi đồng ý với{' '}
@@ -124,10 +334,17 @@ export default function RegisterPage() {
                 </a>
               </label>
             </div>
+            {errors.terms && (
+              <p className="mt-1 text-sm text-red-600">{errors.terms}</p>
+            )}
 
             <div>
-              <Button type="submit" className="w-full">
-                Đăng ký
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? 'Đang xử lý...' : 'Đăng ký'}
               </Button>
             </div>
           </form>
@@ -143,11 +360,11 @@ export default function RegisterPage() {
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" type="button">
                 <Facebook className="h-5 w-5 mr-2" />
                 Facebook
               </Button>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" type="button">
                 <Github className="h-5 w-5 mr-2" />
                 Github
               </Button>
