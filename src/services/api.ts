@@ -2,6 +2,8 @@ import { Product } from '@/types/product';
 import { Category } from '@/types/Category';
 import { ImageUploadResponse } from '@/types/image';
 
+
+
 const API_URL = 'http://localhost:5000/api';
 
 export const api = {
@@ -196,5 +198,31 @@ async confirmOrder(orderId: number, status: number) {
     throw new Error(data.message || 'Failed to confirm order');
   }
   return data;
-}
+},
+async checkTransaction(transactionData: {
+  orderId: number;
+  amount: number;
+  description: string;
+}): Promise<{
+  success: boolean;
+  message: string;
+  orderId: number;
+  amount: number;
+}> {
+  const response = await fetch(`${API_URL}/Transaction/check-transaction`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: '*/*'
+    },
+    body: JSON.stringify(transactionData)
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to check transaction');
+  }
+
+  return response.json();
+},
+
 };

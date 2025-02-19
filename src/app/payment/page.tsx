@@ -64,32 +64,43 @@ export default function PaymentPage() {
   const handleConfirmPayment = async () => {
     setIsConfirming(true);
     try {
-      // Gọi API để cập nhật trạng thái đơn hàng
-      // await api.updateOrderStatus({
-      //   orderId: orderId,
-      //   status: 1, // Trạng thái đã thanh toán
-      //   paymentStatus: 'PAID'
-      // });
-
-      toast({
-        title: "Xác nhận thanh toán thành công",
-        description: "Chúng tôi sẽ kiểm tra và xử lý đơn hàng của bạn trong thời gian sớm nhất",
+      // Gọi API kiểm tra giao dịch
+      const checkResult = await api.checkTransaction({
+        orderId: Number(orderId),
+        amount: Number(amount),
+        description: bankInfo.transferContent
       });
-
-      setTimeout(() => {
-        router.push('/orders');
-      }, 2000);
-
+  
+      if (checkResult.success) {
+        toast({
+          title: "Xác nhận thanh toán thành công",
+          description: checkResult.message || "Chúng tôi sẽ kiểm tra và xử lý đơn hàng của bạn trong thời gian sớm nhất",
+          variant: "default",
+        });
+  
+        // Chuyển hướng đến trang orders sau 2 giây
+        setTimeout(() => {
+          router.push('/orders');
+        }, 2000);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Thông báo",
+          description: checkResult.message || "Không tìm thấy giao dịch. Vui lòng thử lại sau vài phút",
+        });
+      }
     } catch (error) {
+      console.error('Error checking transaction:', error);
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Có lỗi xảy ra khi xác nhận thanh toán",
+        description: "Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại sau",
       });
     } finally {
       setIsConfirming(false);
     }
   };
+  
 
   if (!orderId || !qrCode) {
     return (
