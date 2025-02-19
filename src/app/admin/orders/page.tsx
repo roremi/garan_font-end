@@ -73,7 +73,9 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, []);
-
+  const calculateTotal = (details: OrderDetail[]) => {
+    return details.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  };
   const fetchOrders = async () => {
     try {
       const data = await api.getAllOrders();
@@ -312,12 +314,12 @@ export default function OrdersPage() {
               ))}
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-              <span className="font-medium">Tổng tiền</span>
-              <span className="text-xl font-bold text-orange-600">
-                {viewOrder.total.toLocaleString('vi-VN')}đ
-              </span>
-            </div>
+              <div className="flex justify-between items-center mb-6">
+                <span className="font-medium">Tổng tiền</span>
+                <span className="text-xl font-bold text-orange-600">
+                  {calculateTotal(viewOrder.details || []).toLocaleString('vi-VN')}đ
+                </span>
+              </div>
 
             <div className="flex justify-end gap-4">
               <Button
