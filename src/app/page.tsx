@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Product } from '@/types/product';
 import { useRouter } from 'next/navigation'; 
 import { useCart } from '@/contexts/CartContext'; // Import useCart hook
 import { useToast } from "@/components/ui/use-toast"; // Import useToast
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
@@ -19,12 +20,32 @@ export default function HomePage() {
   const [email, setEmail] = useState('');
   const { addToCart } = useCart(); // Sử dụng useCart hook
   const { toast } = useToast(); // Sử dụng useToast
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const slideRef = useRef<HTMLDivElement>(null);
+  
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     alert(`Đăng ký nhận tin thành công với email: ${email}`);
     setEmail('');
   };
 
+  const handleSlideChange = (index: number) => {
+    if (!products) return;
+    setCurrentSlide(index);
+  };
+
+  const totalSlides = products ? Math.ceil(products.length / 4) : 0;
+
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (products && products.length > 0) {
+        setCurrentSlide((current) => (current + 1) % totalSlides);
+      }
+    }, 5000);
+  
+    return () => clearInterval(interval);
+  }, [products, totalSlides]);
   const handleAddToCart = (product: Product) => {
     if (!product.isAvailable) {
       toast({
@@ -332,92 +353,145 @@ export default function HomePage() {
               </div>
             </div>
           </section>
-        {/* Featured Products */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-12">Món ăn nổi bật</h2>
-            {isLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Đang tải sản phẩm...</p>
-              </div>
-            ) : error ? (
-              <div className="text-center py-8 text-red-600">
-                <p>{error}</p>
-                <Button 
-                  className="mt-4"
-                  onClick={refetch}
-                >
-                  Thử lại
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                {products.map((product) => (
-                <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all">
+                  {/* Featured Products */}
+          <section className="py-16">
+            <div className="container mx-auto px-4">
+              <h2 className="text-3xl font-bold text-center mb-12">Món ăn nổi bật</h2>
+              {isLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Đang tải sản phẩm...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-600">
+                  <p>{error}</p>
+                  <Button className="mt-4" onClick={refetch}>
+                    Thử lại
+                  </Button>
+                </div>
+              ) : (
+                <div className="relative max-w-6xl mx-auto"> {/* Thêm max-width và căn giữa */}
                   <div 
-                    className="cursor-pointer"
-                    onClick={() => handleNavigateToProduct(product.id)}
+                    ref={slideRef}
+                    className="overflow-hidden" // Đổi overflow-x-hidden thành overflow-hidden
                   >
-                    <div className="h-48 bg-gray-100 relative overflow-hidden">
-                      {product.imageUrl ? (
-                        <Image
-                          src={product.imageUrl}
-                          alt={product.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                          Hình ảnh không có sẵn
+                    <div 
+                      className="flex transition-transform duration-300 ease-in-out"
+                      style={{ 
+                        width: `${Math.ceil(products.length / 4) * 100}%`,
+                        transform: `translateX(-${currentSlide * (100 / Math.ceil(products.length / 4))}%)`
+                      }}
+                    >
+                      {Array.from({ length: Math.ceil(products.length / 4) }).map((_, slideIndex) => (
+                        <div key={slideIndex} className="w-full flex gap-6"> {/* Giảm gap xuống */}
+                          {products.slice(slideIndex * 4, (slideIndex + 1) * 4).map((product) => (
+                            <div 
+                              key={product.id} 
+                              className="w-1/4 flex-shrink-0 bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all"
+                            >
+                              <div 
+                                className="cursor-pointer"
+                                onClick={() => handleNavigateToProduct(product.id)}
+                              >
+                                <div className="h-40 bg-gray-100 relative overflow-hidden"> {/* Giảm chiều cao hình */}
+                                  {product.imageUrl ? (
+                                    <Image
+                                      src={product.imageUrl}
+                                      alt={product.name}
+                                      fill
+                                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                                      Hình ảnh không có sẵn
+                                    </div>
+                                  )}
+                                  {!product.isAvailable && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                      <span className="text-white font-bold">Hết hàng</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="p-3"> {/* Giảm padding */}
+                                <h3 
+                                  className="font-bold text-sm mb-1 hover:text-orange-600 transition-colors cursor-pointer"
+                                  onClick={() => handleNavigateToProduct(product.id)}
+                                >
+                                  {product.name}
+                                </h3>
+                                <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                                  {product.description}
+                                </p>
+                                <p className="text-orange-600 font-bold text-sm mb-3">
+                                  {formatPrice(product.price)}
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    className="flex-1 text-xs py-1" // Giảm kích thước nút
+                                    variant="outline"
+                                    onClick={() => handleNavigateToProduct(product.id)}
+                                  >
+                                    Chi tiết
+                                  </Button>
+                                  <Button 
+                                    className="flex-1 text-xs py-1" // Giảm kích thước nút
+                                    disabled={!product.isAvailable}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      product.isAvailable && handleAddToCart(product);
+                                    }}
+                                  >
+                                    {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                      {!product.isAvailable && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                          <span className="text-white font-bold">Hết hàng</span>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </div>
-                  <div className="p-4">
-                    <h3 
-                      className="font-bold mb-2 hover:text-orange-600 transition-colors cursor-pointer"
-                      onClick={() => handleNavigateToProduct(product.id)}
-                    >
-                      {product.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                      {product.description}
-                    </p>
-                    <p className="text-orange-600 font-bold mb-4">
-                      {formatPrice(product.price)}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button 
-                        className="flex-1"
-                        variant="outline"
-                        onClick={() => handleNavigateToProduct(product.id)}
-                      >
-                        Chi tiết
-                      </Button>
-                      <Button 
-                        className="flex-1"
-                        disabled={!product.isAvailable}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          product.isAvailable && handleAddToCart(product);
-                        }}
-                      >
-                        {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}
-                      </Button>
-                    </div>
+
+                  {/* Navigation Buttons */}
+                  <button
+                    onClick={() => {
+                      const prev = currentSlide === 0 ? Math.ceil(products.length / 4) - 1 : currentSlide - 1;
+                      handleSlideChange(prev);
+                    }}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const next = (currentSlide + 1) % Math.ceil(products.length / 4);
+                      handleSlideChange(next);
+                    }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-6 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+
+                  {/* Radio buttons for navigation */}
+                  <div className="flex justify-center gap-2 mt-6">
+                    {Array.from({ length: Math.ceil(products.length / 4) }).map((_, index) => (
+                      <button
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          currentSlide === index ? 'bg-orange-600' : 'bg-gray-300'
+                        }`}
+                        onClick={() => handleSlideChange(index)}
+                        aria-label={`Go to slide ${index + 1}`}
+                      />
+                    ))}
                   </div>
                 </div>
-              ))}
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
+          </section>
+
+
 
         {/* Why Choose Us Section */}
         <section className="bg-orange-50 py-16">
