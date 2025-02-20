@@ -75,12 +75,25 @@ export default function AdminDashboard() {
     fetchUsers();
   }, [user, router]);
   
+  const [initialUserData, setInitialUserData] = useState<User | null>(null);
+
+  // Sửa lại hàm fetchUsers
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
       const allUsers = await authService.getAllProfiles();
       setUsers(allUsers as User[]);
+      
+      // Lưu dữ liệu của user hiện tại
+      if (user) {
+        const currentUserData = (allUsers as User[]).find(u => u.id === user.id);
+        if (currentUserData) {
+          setInitialUserData(currentUserData);
+        }
+      }
     } catch (error: any) {
+      await authService.logout();
+      logout();
       toast.error(error.message || 'Không thể tải danh sách người dùng');
     } finally {
       setIsLoading(false);
@@ -95,6 +108,18 @@ export default function AdminDashboard() {
   
   const handleDeleteUser = async (userId: number) => {
     try {
+      // Kiểm tra xem có phải user cuối cùng không
+      if (users.length <= 1) {
+        toast.error('Không thể xóa người dùng cuối cùng của hệ thống!');
+        return;
+      }
+  
+      // Kiểm tra xem có phải user đang đăng nhập không
+      if (userId === currentUserId) {
+        toast.error('Không thể xóa tài khoản đang sử dụng!');
+        return;
+      }
+  
       await authService.deleteUser(userId);
       setUsers(users.filter(u => u.id !== userId));
       toast.success('Xóa người dùng thành công');
@@ -146,45 +171,66 @@ export default function AdminDashboard() {
     });
   };
   
-  const handleSaveChanges = async () => {
-    if (!editingUserId) return;
-    
-    try {
-      setIsSaving(true);
-      
-      // Chuẩn bị dữ liệu cập nhật (đảm bảo role là chuỗi)
-      const updateData: Partial<UserProfile> = {
-        ...editFormData,
-        role: editFormData.role
-      };
-      
-      // Gọi API cập nhật và lấy dữ liệu người dùng đã được cập nhật từ API
-      const updatedUser = await authService.adminUpdateUser(editingUserId, updateData);
-      
-      // Cập nhật lại state users với dữ liệu mới trả về từ API
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.id === editingUserId
-            ? {
-                ...u,
-                ...updatedUser,
-                // Nếu cần, chuyển role thành số
-                role: updatedUser.role ? Number(updatedUser.role) : u.role
-              }
-            : u
-        )
-      );
-      
-      toast.success('Cập nhật thông tin người dùng thành công');
-      setEditingUserId(null);
-      setEditFormData({});
-    } catch (error: any) {
-      toast.error(error.message || 'Không thể cập nhật thông tin người dùng');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+ // Thêm state mới ở đầu component
+
+ const handleSaveChanges = async () => {
+  if (!editingUserId) return;
   
+  try {
+    setIsSaving(true);
+    
+    // Kiểm tra xem có đang sửa tài khoản hiện tại không
+    const isCurrentUser = editingUserId === currentUserId;
+    
+    // Cập nhật thông tin
+    const updateData: Partial<UserProfile> = {
+      ...editFormData,
+      role: editFormData.role
+    };
+    
+    const updatedUser = await authService.adminUpdateUser(editingUserId, updateData);
+    
+    setUsers((prevUsers) =>
+      prevUsers.map((u) =>
+        u.id === editingUserId
+          ? {
+              ...u,
+              ...updatedUser,
+              role: updatedUser.role ? Number(updatedUser.role) : u.role
+            }
+          : u
+      )
+    );
+    
+    toast.success('Cập nhật thông tin người dùng thành công');
+
+    // Chỉ kiểm tra thay đổi nếu là tài khoản hiện tại và có initialUserData
+    if (isCurrentUser && initialUserData) {
+      const isEmailChanged = editFormData.email !== initialUserData.email;
+      const isRoleChanged = String(editFormData.role) !== String(initialUserData.role);
+
+      if (isEmailChanged || isRoleChanged) {
+        toast.info('Thông tin tài khoản đã thay đổi, bạn sẽ được đăng xuất trong 2 giây');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await authService.logout();
+        logout();
+        router.push('/admin/login');
+        return;
+      }
+    }
+
+    setEditingUserId(null);
+    setEditFormData({});
+  } catch (error: any) {
+    await authService.logout();
+    logout();
+    toast.error(error.message || 'Không thể cập nhật thông tin người dùng');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+
   
   // Get current user ID
   const currentUserId = user?.id || 0;
@@ -203,10 +249,10 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
           <p className="text-gray-600">Quản lý tất cả người dùng trong hệ thống</p>
         </div>
-        <Button variant="outline" onClick={handleLogout}>
+        {/* <Button variant="outline" onClick={handleLogout}>
           <LogOut className="h-4 w-4 mr-2" />
           Đăng xuất
-        </Button>
+        </Button> */}
       </header>
       
       {/* Search and filters */}
@@ -220,10 +266,10 @@ export default function AdminDashboard() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button>
+        {/* <Button>
           <UserPlus className="h-4 w-4 mr-2" />
           Thêm người dùng mới
-        </Button>
+        </Button> */}
       </div>
       
       {/* Users table */}
