@@ -1,4 +1,5 @@
 "use client"
+const URL_API = "http://localhost:5001/";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
@@ -11,19 +12,29 @@ interface User {
   role: string | number;
   avatar?: string;
   is2FAEnabled?: boolean;
+}
 
+interface TwoFactorStatusDto {
+  isEnabled: boolean;
+  email: string;
+}
+
+interface SetupTwoFactorResponseDto {
+  qrCodeUrl: string;
+  secretKey: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (user: User) => void;
+  login: (userData: Omit<User, 'id'> & { id?: number }) => void;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
-  enable2FA: () => Promise<{ qrCode: string }>;
-  disable2FA: () => Promise<void>;
-  verify2FA: (code: string) => Promise<void>;
+  getTwoFactorStatus: () => Promise<TwoFactorStatusDto>;
+  setupTwoFactor: () => Promise<SetupTwoFactorResponseDto>;
+  verifyTwoFactor: (code: string) => Promise<void>;
+  disableTwoFactor: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,21 +53,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+  const login = (userData: Omit<User, 'id'> & { id?: number }) => {
+    const userWithId: User = {
+      ...userData,
+      id: userData.id ?? Date.now(),
+    } as User;
+    
+    setUser(userWithId);
+    setIsAuthenticated(true);
+    localStorage.setItem('user', JSON.stringify(userWithId));
   };
 
   const logout = () => {
     setUser(null);
+    setIsAuthenticated(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/profile', {
+      const token = localStorage.getItem('token')?.replace(/^"(.*)"$/, '$1');
+      const response = await fetch(URL_API+'api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -78,17 +96,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...user,
         ...updatedUser
       }));
-
-      return updatedUser;
     } catch (error) {
       throw new Error('Failed to update profile');
     }
   };
 
-  const enable2FA = async () => {
+  const getTwoFactorStatus = async (): Promise<TwoFactorStatusDto> => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/2fa/enable', {
+      const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
+      const response = await fetch('https://localhost:5001/api/TwoFactor/status', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get 2FA status');
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error('Failed to get 2FA status');
+    }
+  };
+
+  const setupTwoFactor = async (): Promise<SetupTwoFactorResponseDto> => {
+    try {
+      const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
+      const response = await fetch('https://localhost:5001/api/TwoFactor/setup', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -96,44 +132,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to enable 2FA');
+        throw new Error('Failed to setup 2FA');
       }
 
-      const { qrCode } = await response.json();
-      return { qrCode };
+      return await response.json();
     } catch (error) {
-      throw new Error('Failed to enable 2FA');
+      throw new Error('Failed to setup 2FA');
     }
   };
 
-  const disable2FA = async () => {
+  const verifyTwoFactor = async (code: string): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/2fa/disable', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to disable 2FA');
-      }
-
-      setUser(prev => prev ? { ...prev, is2FAEnabled: false } : null);
-      localStorage.setItem('user', JSON.stringify({
-        ...user,
-        is2FAEnabled: false
-      }));
-    } catch (error) {
-      throw new Error('Failed to disable 2FA');
-    }
-  };
-
-  const verify2FA = async (code: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/2fa/verify', {
+      const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
+      const response = await fetch('https://localhost:5001/api/TwoFactor/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,18 +167,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const disableTwoFactor = async (): Promise<void> => {
+    try {
+      const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
+      const response = await fetch('https://localhost:5001/api/TwoFactor/disable', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to disable 2FA');
+      }
+
+      setUser(prev => prev ? { ...prev, is2FAEnabled: false } : null);
+      localStorage.setItem('user', JSON.stringify({
+        ...user,
+        is2FAEnabled: false
+      }));
+    } catch (error) {
+      throw new Error('Failed to disable 2FA');
+    }
+  };
+
   return (
     <AuthContext.Provider 
       value={{ 
         user, 
         isLoading, 
-        isAuthenticated, // Thêm isAuthenticated vào value
+        isAuthenticated,
         login, 
         logout,
         updateProfile,
-        enable2FA,
-        disable2FA,
-        verify2FA
+        getTwoFactorStatus,
+        setupTwoFactor,
+        verifyTwoFactor,
+        disableTwoFactor
       }}
     >
       {children}
