@@ -49,24 +49,59 @@ class AuthService {
       throw error;
     }
   }
-
+  async adminUpdateUser(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
+    try {
+      const token = storage.getItem('token');
+      if (!token) throw new Error('Không tìm thấy token');
+      
+      // Kiểm tra người dùng hiện tại có quyền admin không
+      const currentUser = await this.getProfile();
+      if (Number(currentUser.role) !== 0) {
+        throw new Error('Chỉ admin mới có quyền cập nhật thông tin người dùng');
+      }
+    
+      // Đảm bảo role là chuỗi
+      if (data.role && typeof data.role !== 'string') {
+        data.role = String(data.role);
+      }
+    
+      const response = await fetch(`${API_URL}/User/update/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Thêm dòng này để gửi kèm credentials (cookie, v.v.)
+        body: JSON.stringify(data),
+      });
+    
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Cập nhật thông tin thất bại');
+      }
+    
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  }
+  
   async getProfile(): Promise<UserProfile> {
     try {
       const token = storage.getItem('token');
       if (!token) throw new Error('Không tìm thấy token');
   
       const response = await fetch(`${API_URL}/User/profile`, {
-        method: 'GET', // Thêm method rõ ràng
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // 'Origin': 'http://localhost:3000' // Thêm origin header
         },
-        mode: 'cors', // Thêm CORS mode
-        credentials: 'include' // Cho phép gửi credentials
+        mode: 'cors',
+        credentials: 'include'
       });
-      //  console.log(token)
+
       if (!response.ok) {
         if (response.status === 401) {
           console.error('Token không hợp lệ hoặc hết hạn');
@@ -84,8 +119,32 @@ class AuthService {
       throw error;
     }
   }
-  
-
+  // Admin login function - reuses the regular login but checks for admin role
+  async adminLogin(data: LoginData): Promise<UserProfile> {
+    try {
+      // Use the regular login API
+      const loginResult = await this.login(data);
+      
+      // Check if login was successful
+      if (!loginResult.token) {
+        throw new Error('Đăng nhập thất bại');
+      }
+      
+      // Get user profile to check role
+      const profile = await this.getProfile();
+      
+      // Check if user is admin (role === 0)
+      if (Number(profile.role) !== 0) {
+        // If not admin, remove token and throw error
+        this.logout();
+        throw new Error('Tài khoản không có quyền admin');
+      }
+      
+      return profile;
+    } catch (error) {
+      throw error;
+    }
+  }
   async updateProfile(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
     try {
       const token = storage.getItem('token');
@@ -110,6 +169,7 @@ class AuthService {
       throw error;
     }
   }
+
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
     try {
@@ -173,7 +233,6 @@ class AuthService {
       throw error;
     }
   }
-
   async getAllProfiles(): Promise<UserProfile[]> {
     try {
       const token = storage.getItem('token');
@@ -194,6 +253,7 @@ class AuthService {
       throw error;
     }
   }
+
 
   logout(): void {
     storage.removeItem('token');

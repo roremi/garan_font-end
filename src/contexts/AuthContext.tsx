@@ -2,14 +2,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
+  id: number;
   username: string;
   email: string;
   fullName: string;
-  phone: string;  // Thay đổi từ phoneNumber sang phone
+  phoneNumber: string;
   address: string;
   role: string | number;
   avatar?: string;
   is2FAEnabled?: boolean;
+
 }
 
 interface AuthContextType {

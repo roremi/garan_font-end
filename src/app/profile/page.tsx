@@ -57,7 +57,7 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
-    phone: user?.phone || '',
+    phone: user?.phoneNumber || '',
     avatar: user?.avatar || '',
   });
   const [qrCodeUrl, setQrCodeUrl] = useState('');
