@@ -8,9 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { api } from '@/services/api';
+import {authService} from '@/services/auth.service'
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
@@ -26,12 +29,24 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { items, clearCart } = useCart();
+  const { user, isAuthenticated } = useAuth();
   
+  useEffect(() => {
+    if (!isAuthenticated) {
+      toast({
+        variant: "destructive",
+        title: "Yêu cầu đăng nhập",
+        description: "Vui lòng đăng nhập để tiếp tục thanh toán",
+      });
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, router]);
+
   const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
-    email: '',
-    address: '',
+    fullName: user?.fullName || '',
+    phone: user?.phoneNumber || '',
+    email: user?.email || '',
+    address: user?.address || '',
     note: '',
     paymentMethod: 'COD'
   });
@@ -57,27 +72,40 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm('Bạn có chắc chắn muốn đặt hàng?')) {
-      return;
-    }
     
-    try {
-      const orderCode = generateOrderCode();
+      if (!isAuthenticated || !user) {
+        toast({
+          variant: "destructive",
+          title: "Yêu cầu đăng nhập",
+          description: "Vui lòng đăng nhập để tiếp tục thanh toán",
+        });
+        return;
+      }
+  
+      if (!window.confirm('Bạn có chắc chắn muốn đặt hàng?')) {
+        return;
+      }
       
-      // Tạo order
-      const orderData = {
-        idUser: 1,
-        nameCustomer: formData.fullName,
-        phone: formData.phone,
-        email: formData.email,
-        address: formData.address,
-        note: formData.note,
-        paymentMethod: formData.paymentMethod,
-        orderCode: orderCode, // Thêm mã đơn hàng
-        createAt: new Date().toISOString(),
-        status: 0,
-        total: total
-      };
+      try {
+        const userResponse = await authService.getUserByEmail(user.email);
+        const userId = userResponse.id;
+        const orderCode = generateOrderCode();
+        console.log(userId);
+        
+        // Tạo order với ID user đã đăng nhập
+        const orderData = {
+          idUser: userId, // Sử dụng ID của user đã đăng nhập
+          nameCustomer: formData.fullName,
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          note: formData.note,
+          paymentMethod: formData.paymentMethod,
+          orderCode: orderCode,
+          createAt: new Date().toISOString(),
+          status: 0,
+          total: total
+        };
   
       const orderResponse = await api.createOrder(orderData);
   
@@ -128,7 +156,9 @@ export default function CheckoutPage() {
     }
   };
   
-  
+  if (!isAuthenticated) {
+    return null; // hoặc loading spinner
+  }
   
 
   return (
@@ -326,4 +356,4 @@ export default function CheckoutPage() {
       <Footer />
     </div>
   );
-}
+  }

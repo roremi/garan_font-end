@@ -190,6 +190,20 @@ async getOrderDetails(orderId: number) {
   return data.data;
 },
 
+async getOrdersbyUser(userId: number) {
+  const response = await fetch(`${API_URL}/Order/getAllOrder?idUser=${userId}`);
+  const data = await response.json();
+  
+  // console.log('Raw API response:', data); // Thêm dòng này
+  
+  if (!data.status || data.status !== 200) {
+    throw new Error(data.message || 'Failed to fetch orders');
+  }
+  
+  // console.log('Processed data:', data.data); // Thêm dòng này
+  return data.data;
+},
+
 async confirmOrder(orderId: number, status: number) {
   const response = await fetch(`${API_URL}/Order/confirmOrder?idOrder=${orderId}&status=${status}`);
   const data = await response.json();

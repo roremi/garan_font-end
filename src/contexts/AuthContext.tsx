@@ -17,6 +17,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (user: User) => void;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -30,11 +31,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
+      setIsAuthenticated(true);
     }
     setIsLoading(false);
   }, []);
@@ -158,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{ 
         user, 
         isLoading, 
+        isAuthenticated, // Thêm isAuthenticated vào value
         login, 
         logout,
         updateProfile,
