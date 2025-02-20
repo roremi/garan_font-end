@@ -149,6 +149,7 @@ export default function AdminDashboard() {
   const handleSaveChanges = async () => {
     if (!editingUserId) return;
     
+<<<<<<< Updated upstream
     try {
       setIsSaving(true);
       
@@ -185,6 +186,56 @@ export default function AdminDashboard() {
     }
   };
   
+=======
+    // Cập nhật thông tin
+    const updateData: Partial<UserProfile> = {
+      ...editFormData,
+      role: editFormData.role
+    };
+    
+    await authService.adminUpdateUser(editingUserId, updateData);
+    
+    // Sau khi cập nhật thành công, load lại toàn bộ danh sách người dùng
+    try {
+      const allUsers = await authService.getAllProfiles();
+      setUsers(allUsers as User[]);
+      
+      // Kiểm tra xem người dùng hiện tại còn quyền admin không
+      const currentUser = (allUsers as User[]).find(u => u.id === currentUserId);
+      if (!currentUser || Number(currentUser.role) !== 0) {
+        toast.error('Quyền truy cập đã thay đổi , hãy đăng nhập lại !');
+        await authService.logout();
+        logout();
+        router.push('/admin/login');
+        return;
+      }
+      toast.success('Cập nhật thông tin người dùng thành công');
+      setEditingUserId(null);
+      setEditFormData({});
+      
+    } catch (error) {
+      // Nếu không load được danh sách, đăng xuất
+      toast.error('Không thể tải lại danh sách người dùng');
+      await authService.logout();
+      logout();
+      router.push('/admin/login');
+      return;
+    }
+    
+  } catch (error: any) {
+    toast.error(error.message || 'Không thể cập nhật thông tin người dùng');
+    // Nếu cập nhật thất bại, cũng đăng xuất
+    await authService.logout();
+    logout();
+    router.push('/admin/login');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+
+
+>>>>>>> Stashed changes
   
   // Get current user ID
   const currentUserId = user?.id || 0;

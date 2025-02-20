@@ -27,44 +27,57 @@ export default function AdminLogin() {
     setIsLoading(true);
     
     try {
+      // Kiểm tra email và password có được nhập không
+      if (!formData.email || !formData.password) {
+        setError('Vui lòng nhập đầy đủ email và mật khẩu');
+        setIsLoading(false); // Reset trạng thái loading
+        return;
+      }
+  
       // Call the existing login service
       const response = await authService.login({
         email: formData.email,
         password: formData.password
       });
-
+  
       if (response.token) {
-        // Fetch user profile to check role
-        const userProfile = await authService.getProfile();
-        
-        // Check if user is admin (role == 0)
-        if (Number(userProfile.role) == 0) {
-          // Login the admin user
-          login({
-            id: userProfile.id,
-            username: userProfile.username,
-            email: userProfile.email,
-            fullName: userProfile.fullName,
-            phoneNumber: userProfile.phoneNumber,
-            address: userProfile.address,
-            role: Number(userProfile.role)
-          });
+        try {
+          // Fetch user profile to check role
+          const userProfile = await authService.getProfile();
           
-          toast.success('Đăng nhập Admin thành công!');
+          // Check if user is admin (role == 0)
+          if (Number(userProfile.role) === 0) {
+            // Login the admin user
+            login({
+              id: userProfile.id,
+              username: userProfile.username,
+              email: userProfile.email,
+              fullName: userProfile.fullName,
+              phoneNumber: userProfile.phoneNumber,
+              address: userProfile.address,
+              role: Number(userProfile.role)
+            });
+            
+            toast.success('Đăng nhập Admin thành công!');
             localStorage.setItem('adminToken', 'dummy-token');
-          router.push('/admin/dashboard');
-        } else {
-          // Not an admin, log them out and show error
-          authService.logout();
-          setError('Tài khoản không có quyền admin');
+            router.push('/admin/dashboard');
+          } else {
+            // Not an admin, log them out and show error
+            authService.logout();
+            setError('Tài khoản không có quyền admin');
+            setIsLoading(false); // Reset trạng thái loading
+          }
+        } catch (profileError: any) {
+          setError('Không thể lấy thông tin người dùng');
+          setIsLoading(false); // Reset trạng thái loading
         }
       }
     } catch (error: any) {
       setError(error.message || 'Đăng nhập thất bại');
-    } finally {
-      setIsLoading(true);
+      setIsLoading(false); // Reset trạng thái loading
     }
   };
+  
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
