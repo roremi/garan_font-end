@@ -186,7 +186,13 @@ export default function AdminDashboard() {
     }
   };
   
+<<<<<<< Updated upstream
 =======
+=======
+  try {
+    setIsSaving(true);
+    
+>>>>>>> Stashed changes
     // Cập nhật thông tin
     const updateData: Partial<UserProfile> = {
       ...editFormData,
@@ -235,6 +241,9 @@ export default function AdminDashboard() {
 
 
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   
   // Get current user ID
