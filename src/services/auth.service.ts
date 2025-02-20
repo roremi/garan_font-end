@@ -254,6 +254,33 @@ class AuthService {
     }
   }
 
+  async getUserByEmail(email: string): Promise<UserProfile> {
+    try {
+      const token = storage.getItem('token');
+      if (!token) {
+        throw new Error('Bạn chưa đăng nhập!');
+      }
+
+      const response = await fetch(`${API_URL}/User/${email}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text(); // Lấy nội dung lỗi từ server
+        throw new Error(errorText || 'Lấy thông tin người dùng thất bại'); 
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching user by email:", error); // Log lỗi ra console để dễ debug
+      throw error; // Ném lỗi lên để component xử lý
+    }
+  }
+
 
   logout(): void {
     storage.removeItem('token');

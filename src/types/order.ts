@@ -20,7 +20,8 @@ export interface OrderDetails {
 }
 
 export interface Order extends OrderDetails {
-  id: string;
+  id: number;
   orderDate: string;
-  status: 'PENDING' | 'CONFIRMED' | 'DELIVERING' | 'COMPLETED' | 'CANCELLED';
+  status: number;
+  createAt: string;
 }
