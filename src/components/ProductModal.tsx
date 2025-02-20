@@ -33,6 +33,11 @@ interface ProductModalProps {
 }
 
 export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: ProductModalProps) {
+
+  const getImageUrl = (filePath: string) => {
+    if (!filePath) return '';
+    return `${process.env.NEXT_PUBLIC_API_URL}/${filePath}`;
+  };
   // State Management
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -113,7 +118,9 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
     try {
       setImageLoading(true);
       const response = await api.uploadImage(file);
-      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL}/${response.filePath}`;
+      
+      // Sử dụng filePath thay vì fileName
+      const imageUrl = getImageUrl(response.filePath);
 
       setFormData(prev => ({
         ...prev,
