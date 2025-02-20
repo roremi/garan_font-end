@@ -58,12 +58,14 @@ export default function LoginPage() {
         
         // Cập nhật context với thông tin user đúng format và chuyển đổi role sang number
         login({
+          id: userProfile.id,
           username: userProfile.username,
           email: userProfile.email,
           fullName: userProfile.fullName,
           phoneNumber: userProfile.phoneNumber,
           address: userProfile.address,
           role: Number(userProfile.role) // Chuyển đổi role sang number
+
         });
 
         toast.success('Đăng nhập thành công!');
