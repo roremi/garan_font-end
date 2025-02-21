@@ -81,10 +81,10 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
+    // if (!user) {
+    //   router.push('/auth/login');
+    //   return;
+    // }
 
     const fetchTwoFactorStatus = async () => {
       try {

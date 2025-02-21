@@ -133,29 +133,136 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {showTwoFactor ? (
-            <form onSubmit={handleTwoFactorSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="twoFactorCode" className="block text-sm font-medium text-gray-700">
-                  Mã xác thực 2FA
-                </label>
-                <input
-                  type="text"
-                  value={twoFactorCode}
-                  onChange={(e) => setTwoFactorCode(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
-                  placeholder="Nhập mã 6 số"
-                />
+        {showTwoFactor ? (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-100 mb-4">
+                    <Lock className="h-8 w-8 text-orange-600" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Xác thực hai lớp (2FA)
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Vui lòng nhập mã xác thực từ ứng dụng authenticator của bạn
+                  </p>
+                </div>
+
+                <form onSubmit={handleTwoFactorSubmit} className="mt-8 space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex justify-center">
+                      <div className="flex space-x-2">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        maxLength={1}
+                        className="w-12 h-12 text-center text-xl font-semibold border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        value={twoFactorCode[index] || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Chỉ cho phép nhập số
+                          if (/^\d*$/.test(value)) {
+                            // Cập nhật giá trị mới
+                            const newCode = [...twoFactorCode];
+                            newCode[index] = value;
+                            const updatedCode = newCode.join('');
+                            setTwoFactorCode(updatedCode);
+                            
+                            // Auto focus next input
+                            if (value && index < 5) {
+                              const inputs = (e.target as HTMLInputElement).parentElement?.querySelectorAll('input');
+                              if (inputs && inputs[index + 1]) {
+                                inputs[index + 1].focus();
+                              }
+                            }
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          // Handle backspace
+                          if (e.key === 'Backspace' && !twoFactorCode[index] && index > 0) {
+                            const inputs = (e.target as HTMLInputElement).parentElement?.querySelectorAll('input');
+                            if (inputs && inputs[index - 1]) {
+                              inputs[index - 1].focus();
+                            }
+                          }
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pastedData = e.clipboardData.getData('text');
+                          const numbers = pastedData.replace(/[^0-9]/g, '').slice(0, 6);
+                          setTwoFactorCode(numbers);
+                          
+                          // Focus vào ô cuối cùng sau khi paste
+                          if (numbers.length === 6) {
+                            const inputs = (e.target as HTMLInputElement).parentElement?.querySelectorAll('input');
+                            if (inputs && inputs[5]) {
+                              inputs[5].focus();
+                            }
+                          }
+                        }}
+                      />
+                    ))}
+
+                      </div>
+                    </div>
+                    <p className="text-sm text-center text-gray-500">
+                      Mã sẽ hết hạn sau 5 phút
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Button 
+                      type="submit" 
+                      className="w-full"
+                      disabled={isLoading || twoFactorCode.length !== 6}
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Đang xác thực...
+                        </div>
+                      ) : (
+                        'Xác nhận'
+                      )}
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTwoFactor(false);
+                        setTwoFactorCode('');
+                      }}
+                      className="w-full text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Quay lại đăng nhập
+                    </button>
+                  </div>
+                </form>
+
+                <div className="mt-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-300" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white text-gray-500">
+                        Gặp sự cố?
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-6 text-center">
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-orange-600 hover:text-orange-500"
+                      onClick={() => toast.info('Tính năng đang được phát triển')}
+                    >
+                      Yêu cầu mã mới
+                    </button>
+                  </div>
+                </div>
               </div>
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Đang xác thực...' : 'Xác thực'}
-              </Button>
-            </form>
-          ) : (
+            ) : (
             <>
               <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
                 <div>
