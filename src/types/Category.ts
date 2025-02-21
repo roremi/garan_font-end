@@ -1,7 +1,6 @@
 export interface Category {
-    id: number;
-    name: string;
-    description: string;
-    products: any[];
-  }
-  
+  id: number;
+  name: string;
+  description: string;
+  products?: any[];
+}
