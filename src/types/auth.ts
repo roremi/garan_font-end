@@ -12,6 +12,18 @@ export interface RegisterData {
   username: string;
 }
 
+export interface TwoFactorValidateRequest {
+  userId: number;
+  code: string;
+}
+
+export interface TwoFactorValidationResponse {
+  token: string;
+  requiresTwoFactor: boolean;
+  userId: number;
+  message: string;
+}
+
 export interface UserProfile {
   id: number;
   username: string;
@@ -19,12 +31,14 @@ export interface UserProfile {
   fullName: string;
   phoneNumber: string;
   address: string;
-  role: string;
-  createdAt?: string;
-  isActive?: boolean;
+  role: string | number;
+  avatar?: string;
+  is2FAEnabled?: boolean;
 }
 
 export interface AuthResponse {
-  token: string;
-  user?: UserProfile;
+  token?: string;
+  requiresTwoFactor: boolean;
+  userId?: number;
+  message?: string;
 }

@@ -1,4 +1,4 @@
-import { LoginData, RegisterData, UserProfile, AuthResponse } from '@/types/auth';
+import { LoginData, RegisterData, UserProfile, AuthResponse, TwoFactorValidateRequest, TwoFactorValidationResponse } from '@/types/auth';
 import { storage } from '@/utils/storage';
 
 const API_URL = 'https://localhost:5001/api';
@@ -43,14 +43,19 @@ class AuthService {
       }
 
       const result = await response.json();
-      if (result.token) {
+      
+      // Chỉ lưu token nếu không yêu cầu 2FA
+      if (result.token && !result.requiresTwoFactor) {
         storage.setItem('token', result.token);
       }
+      
       return result;
     } catch (error) {
       throw error;
     }
   }
+
+  
   async adminUpdateUser(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
     try {
       const token = storage.getItem('token');
@@ -214,6 +219,36 @@ class AuthService {
       throw error;
     }
   }
+  async validateTwoFactor(data: TwoFactorValidateRequest): Promise<TwoFactorValidationResponse> {
+    try {
+      const response = await fetch(`${API_URL}/TwoFactor/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+        credentials: 'include', // Thêm dòng này nếu bạn sử dụng cookies
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Xác thực 2FA thất bại');
+      }
+  
+      const result = await response.json();
+      
+      // Lưu token sau khi xác thực 2FA thành công
+      if (result.token) {
+        storage.setItem('token', result.token);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('2FA Validation Error:', error);
+      throw error;
+    }
+  }
+
 
   async deleteUser(id: number): Promise<void> {
     try {
@@ -282,6 +317,7 @@ class AuthService {
       throw error; // Ném lỗi lên để component xử lý
     }
   }
+  
 
 
   logout(): void {
