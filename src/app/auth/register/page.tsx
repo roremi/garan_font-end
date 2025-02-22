@@ -17,6 +17,7 @@ interface RegisterFormData {
   address: string;
   username: string;
   terms: boolean;
+  emailVerificationCode: string;
 }
 
 interface FormErrors {
@@ -28,11 +29,14 @@ interface FormErrors {
   address?: string;
   username?: string;
   terms?: string;
+  emailVerificationCode?: string;
 }
-
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
     password: '',
@@ -41,10 +45,102 @@ export default function RegisterPage() {
     phoneNumber: '',
     address: '',
     username: '',
-    terms: false
+    terms: false,
+    emailVerificationCode: ''
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const handleSendVerificationCode = async () => {
+    // Validate email trước khi gửi
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email || !emailRegex.test(formData.email)) {
+      setErrors(prev => ({
+        ...prev,
+        email: 'Email không hợp lệ'
+      }));
+      return;
+    }
+  
+    try {
+      setVerificationLoading(true);
+      const response = await authService.sendVerificationEmailForRegistration(formData.email);
+      
+      if (response.success) {
+        setIsEmailSent(true);
+        toast.success(response.message || 'Mã xác thực đã được gửi đến email của bạn');
+      } else {
+        throw new Error(response.message || 'Không thể gửi mã xác thực');
+      }
+    } catch (error: any) {
+      console.error('Send verification error:', error);
+      
+      // Xử lý hiển thị lỗi từ response
+      if (error.response?.data) {
+        // Lấy message từ response của backend
+        const errorMessage = error.response.data.message || 'Không thể gửi mã xác thực';
+        toast.error(errorMessage);
+        // Có thể set error vào state nếu cần
+        setErrors(prev => ({
+          ...prev,
+          email: errorMessage
+        }));
+      } else if (error instanceof Error) {
+        // Nếu là lỗi thông thường
+        toast.error(error.message);
+        setErrors(prev => ({
+          ...prev,
+          email: error.message
+        }));
+      } else {
+        // Trường hợp khác
+        toast.error('Không thể gửi mã xác thực');
+        setErrors(prev => ({
+          ...prev,
+          email: 'Không thể gửi mã xác thực'
+        }));
+      }
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+  
+
+  const handleVerifyEmail = async () => {
+    if (!formData.emailVerificationCode || !formData.email) {
+      toast.error('Vui lòng nhập mã xác thực');
+      return;
+    }
+  
+    try {
+      const response = await fetch('https://localhost:5001/api/User/verify-email/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          otp: formData.emailVerificationCode
+        })
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Xác thực email thất bại');
+      }
+  
+      const data = await response.json();
+      if (data.success) {
+        setIsEmailVerified(true);
+        toast.success(data.message || 'Email đã được xác thực thành công');
+      } else {
+        toast.error(data.message || 'Xác thực email thất bại');
+      }
+    } catch (error) {
+      console.error('Verify email error:', error);
+      toast.error(error instanceof Error ? error.message : 'Xác thực email thất bại');
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -71,7 +167,9 @@ export default function RegisterPage() {
     } else if (!emailRegex.test(formData.email)) {
       newErrors.email = 'Email không hợp lệ';
     }
-
+    if (!isEmailVerified) {
+      newErrors.emailVerificationCode = 'Vui lòng xác thực email trước khi đăng ký';
+    }
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Mật khẩu là bắt buộc';
@@ -238,29 +336,81 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  } focus:ring-orange-500 focus:border-orange-500`}
-                  placeholder="you@example.com"
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
+  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+    Email
+  </label>
+  <div className="mt-1 relative rounded-md shadow-sm">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Mail className="h-5 w-5 text-gray-400" />
+    </div>
+    <input
+      id="email"
+      name="email"
+      type="email"
+      value={formData.email}
+      onChange={handleChange}
+      className={`block w-full pl-10 pr-24 sm:text-sm rounded-md p-2.5 border ${
+        errors.email ? 'border-red-500' : 'border-gray-300'
+      } focus:ring-orange-500 focus:border-orange-500`}
+      placeholder="you@example.com"
+    />
+    <div className="absolute inset-y-0 right-0 flex items-center">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mr-2"
+        onClick={handleSendVerificationCode}
+        disabled={verificationLoading || isEmailVerified}
+      >
+        {verificationLoading ? 'Đang gửi...' : 'Gửi mã'}
+      </Button>
+    </div>
+  </div>
+  {errors.email && (
+    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+  )}
+</div>
+
+{isEmailSent && (
+  <div>
+    <label htmlFor="emailVerificationCode" className="block text-sm font-medium text-gray-700">
+      Mã xác thực
+    </label>
+    <div className="mt-1 relative rounded-md shadow-sm">
+      <input
+        id="emailVerificationCode"
+        name="emailVerificationCode"
+        type="text"
+        value={formData.emailVerificationCode}
+        onChange={handleChange}
+        className={`block w-full pr-24 sm:text-sm rounded-md p-2.5 border ${
+          errors.emailVerificationCode ? 'border-red-500' : 'border-gray-300'
+        } focus:ring-orange-500 focus:border-orange-500`}
+        placeholder="Nhập mã xác thực"
+      />
+      <div className="absolute inset-y-0 right-0 flex items-center">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mr-2"
+          onClick={handleVerifyEmail}
+          disabled={verificationLoading || isEmailVerified}
+        >
+          {verificationLoading ? 'Đang xác thực...' : 'Xác thực'}
+        </Button>
+      </div>
+    </div>
+    {errors.emailVerificationCode && (
+      <p className="mt-1 text-sm text-red-600">{errors.emailVerificationCode}</p>
+    )}
+    {isEmailVerified && (
+      <p className="mt-1 text-sm text-green-600">Email đã được xác thực thành công</p>
+    )}
+  </div>
+)}
+
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">

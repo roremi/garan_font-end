@@ -1,7 +1,7 @@
 import { LoginData, RegisterData, UserProfile, AuthResponse, TwoFactorValidateRequest, TwoFactorValidationResponse } from '@/types/auth';
 import { storage } from '@/utils/storage';
 import axios from 'axios';
-import { EmailVerificationRequest, VerifyOTPRequest, ApiResponse } from '@/types/auth';
+import { EmailVerificationRequest, VerifyOTPRequest, ApiResponse, VerifyEmailOTPRequest } from '@/types/auth';
 
 
 const API_URL = 'https://localhost:5001/api';
@@ -153,6 +153,98 @@ class AuthService {
       return profile;
     } catch (error) {
       throw error;
+    }
+  }
+  async sendVerificationEmailForRegistration(email: string): Promise<ApiResponse> {
+    try {
+      const data: EmailVerificationRequest = { email };
+      
+      const response = await axios.post<ApiResponse>(
+        `${API_URL}/User/verify-email/send/register`,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
+      if (response.data && response.data.success) {
+        return response.data;
+      }
+      throw new Error(response.data?.message || 'Gửi mã xác thực thất bại');
+    } catch (error: any) {
+      // Xử lý lỗi từ Axios
+      if (axios.isAxiosError(error)) {
+        // Lấy message từ response error
+        const errorMessage = error.response?.data?.message 
+          || error.response?.data?.error 
+          || error.message;
+        throw new Error(errorMessage);
+      }
+      throw error; // Throw lại error nếu không phải AxiosError
+    }
+  }
+  
+  async sendVerificationEmailForForgotpassword(email: string): Promise<ApiResponse> {
+    try {
+      const data: EmailVerificationRequest = { email };
+      
+      const response = await axios.post<ApiResponse>(
+        `${API_URL}/User/verify-email/forgot-password`, // Endpoint mới cho đăng ký
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
+      console.log('Send verification email response:', response.data);
+  
+      if (response.data && response.data.success) {
+        return response.data;
+      }
+      throw new Error(response.data?.message || 'Gửi mã xác thực thất bại');
+    } catch (error: any) {
+      console.error('Send verification email error:', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      throw new Error('Có lỗi xảy ra khi gửi mã xác thực');
+    }
+  }
+  async verifyEmailForRegistration(email: string, otp: string): Promise<ApiResponse> {
+    try {
+      const data: VerifyEmailOTPRequest = { email, otp };
+      
+      const response = await axios.post<ApiResponse>(
+        `${API_URL}/User/verify-email/verify`,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
+      console.log('Verify email response:', response.data);
+  
+      if (response.data && response.data.success) {
+        return response.data;
+      }
+      throw new Error(response.data?.message || 'Xác thực email thất bại');
+    } catch (error: any) {
+      console.error('Verify email error:', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      throw new Error('Có lỗi xảy ra khi xác thực email');
     }
   }
   async verifyEmailOTP(email: string, otp: string): Promise<ApiResponse> {
@@ -449,6 +541,8 @@ class AuthService {
 
   logout(): void {
     storage.removeItem('token');
+    storage.removeItem('adminToken');
+    storage.removeItem('app_token');
   }
 
   isAuthenticated(): boolean {

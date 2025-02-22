@@ -69,6 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('app_token');
+    localStorage.removeItem('adminToken');
   };
 
   const updateProfile = async (data: Partial<User>) => {
