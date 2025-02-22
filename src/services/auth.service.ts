@@ -1,5 +1,8 @@
 import { LoginData, RegisterData, UserProfile, AuthResponse, TwoFactorValidateRequest, TwoFactorValidationResponse } from '@/types/auth';
 import { storage } from '@/utils/storage';
+import axios from 'axios';
+import { EmailVerificationRequest, VerifyOTPRequest, ApiResponse } from '@/types/auth';
+
 
 const API_URL = 'https://localhost:5001/api';
 
@@ -152,25 +155,167 @@ class AuthService {
       throw error;
     }
   }
-  async updateProfile(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
+  async verifyEmailOTP(email: string, otp: string): Promise<ApiResponse> {
+    try {
+      // 1. Xác thực OTP
+      const verifyResponse = await axios.post<ApiResponse>(
+        `${API_URL}/User/verify-email/verify`,
+        { email, otp },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
+      console.log('Verify OTP response:', verifyResponse.data);
+  
+      // Nếu xác thực OTP thành công
+      if (verifyResponse.data && verifyResponse.data.success) {
+        // 2. Gọi API forgot password để gửi mật khẩu mới
+        const forgotResponse = await axios.post<ApiResponse>(
+          `${API_URL}/User/forgot-password`,
+          { email },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        console.log('Forgot password response:', forgotResponse.data);
+
+        // Nếu cả hai bước đều thành công
+        if (forgotResponse.status === 200) {
+          return {
+            success: true,
+            message: forgotResponse.data.message || 'Xác thực thành công và mật khẩu mới đã được gửi đến email của bạn'
+          };
+        }
+
+        throw new Error(forgotResponse.data?.message || 'Gửi mật khẩu mới thất bại');
+      }
+
+      throw new Error(verifyResponse.data?.message || 'Xác thực mã OTP thất bại');
+    } catch (error: any) {
+      console.error('Verify OTP or forgot password error:', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      throw new Error('Có lỗi xảy ra trong quá trình xử lý');
+    }
+  }
+  async forgotPassword(email: string): Promise<ApiResponse> {
+    try {
+      const response = await axios.post<ApiResponse>(
+        `${API_URL}/User/forgot-password`,
+        { email },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
+      // Log response để debug
+      console.log('Forgot password raw response:', response);
+      console.log('Forgot password response data:', response.data);
+  
+      // Nếu status 200, coi như thành công dù response.data.success có thể undefined
+      if (response.status === 200) {
+        return {
+          success: true,
+          message: response.data.message || 'Mật khẩu mới đã được gửi đến email của bạn'
+        };
+      }
+  
+      // Nếu có response.data nhưng không thành công
+      return {
+        success: false,
+        message: response.data.message || 'Đặt lại mật khẩu thất bại'
+      };
+  
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      
+      // Xử lý lỗi từ API
+      if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data;
+        if (responseData) {
+          return {
+            success: false,
+            message: responseData.message || 'Đặt lại mật khẩu thất bại'
+          };
+        }
+      }
+      
+      // Lỗi khác
+      return {
+        success: false,
+        message: 'Có lỗi xảy ra khi đặt lại mật khẩu'
+      };
+    }
+  }
+  async sendVerificationEmail(email: string): Promise<ApiResponse> {
+    try {
+      const data: EmailVerificationRequest = { email };
+      
+      const response = await axios.post<ApiResponse>(
+        `${API_URL}/User/verify-email/forgot-password`,  // Endpoint gửi OTP cho quên mật khẩu
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
+      console.log('Send verification email response:', response.data);
+  
+      if (response.data && response.data.success) {
+        return response.data;
+      }
+      throw new Error(response.data?.message || 'Gửi mã xác thực thất bại');
+    } catch (error: any) {
+      console.error('Send verification email error:', error);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      throw new Error('Có lỗi xảy ra khi gửi mã xác thực');
+    }
+  }
+  async updateUserProfile(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
     try {
       const token = storage.getItem('token');
       if (!token) throw new Error('Không tìm thấy token');
+      
+      // Kiểm tra người dùng hiện tại có quyền admin không
+      const currentUser = await this.getProfile();
 
+    
+      // Đảm bảo role là chuỗi
+    
       const response = await fetch(`${API_URL}/User/update/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Thêm dòng này để gửi kèm credentials (cookie, v.v.)
         body: JSON.stringify(data),
       });
-
+    
       if (!response.ok) {
         const error = await response.text();
         throw new Error(error || 'Cập nhật thông tin thất bại');
       }
-
+    
       return await response.json();
     } catch (error) {
       throw error;
@@ -201,24 +346,6 @@ class AuthService {
     }
   }
 
-  async forgotPassword(email: string): Promise<void> {
-    try {
-      const response = await fetch(`${API_URL}/User/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Yêu cầu khôi phục mật khẩu thất bại');
-      }
-    } catch (error) {
-      throw error;
-    }
-  }
   async validateTwoFactor(data: TwoFactorValidateRequest): Promise<TwoFactorValidationResponse> {
     try {
       const response = await fetch(`${API_URL}/TwoFactor/validate`, {

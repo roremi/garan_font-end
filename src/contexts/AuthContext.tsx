@@ -3,7 +3,7 @@ const URL_API = "http://localhost:5001/";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
-  id: string | number;
+  id: number;
   username: string;
   email: string;
   fullName: string;
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (userData: Omit<User, 'id'> & { id?: number }) => {
     const userWithId: User = {
       ...userData,
-      id: userData.id ?? Date.now(),
+      id: userData.id,
     } as User;
     
     setUser(userWithId);
