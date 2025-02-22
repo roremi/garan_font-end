@@ -36,7 +36,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
 
   const getImageUrl = (filePath: string) => {
     if (!filePath) return '';
-    return `${process.env.NEXT_PUBLIC_API_URL}/${filePath}`;
+    return `${process.env.NEXT_PUBLIC_API_URL||"http://localhost:5000"}/${filePath}`;
   };
   // State Management
   const [formData, setFormData] = useState<Partial<Product>>({
