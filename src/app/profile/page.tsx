@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { authService } from '@/services/auth.service';
 import { 
   User, 
   KeyRound, 
@@ -57,21 +58,29 @@ export default function ProfilePage() {
   const router = useRouter();
   const { 
     user, 
-    updateProfile, 
     getTwoFactorStatus, 
     setupTwoFactor, 
     verifyTwoFactor, 
-    disableTwoFactor 
+    disableTwoFactor,
+    logout 
   } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState({
+    username: user?.username || '',
     fullName: user?.fullName || '',
     email: user?.email || '',
     phoneNumber: user?.phoneNumber || '',
+    address: user?.address || '',
     avatar: user?.avatar || '',
   });
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [show2FADialog, setShow2FADialog] = useState(false);
@@ -81,47 +90,79 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    // if (!user) {
-    //   router.push('/auth/login');
-    //   return;
-    // }
-
-    const fetchTwoFactorStatus = async () => {
-      try {
-        const status = await getTwoFactorStatus();
-        setTwoFactorStatus(status);
-      } catch (error) {
-        toast.error('Không thể lấy trạng thái 2FA');
-      }
-    };
-
-    fetchTwoFactorStatus();
-  }, [user, router, getTwoFactorStatus]);
-
-  useEffect(() => {
     if (user) {
+      // Set profile data
       setProfileData({
-        fullName: user.fullName || '',
-        email: user.email || '',
-        phoneNumber: user.phoneNumber || '',
-        avatar: user.avatar || '',
+        username: user?.username || '',
+        fullName: user?.fullName || '',
+        email: user?.email || '',
+        phoneNumber: user?.phoneNumber || '',
+        address: user?.address || '',
+        avatar: user?.avatar || '',
       });
+  
+      // Fetch 2FA status
+      const fetchTwoFactorStatus = async () => {
+        try {
+          const status = await getTwoFactorStatus();
+          setTwoFactorStatus(status);
+        } catch (error) {
+          toast.error('Không thể lấy trạng thái 2FA');
+        }
+      };
+  
+      fetchTwoFactorStatus();
     }
-  }, [user]);
+  }, [user, router, getTwoFactorStatus]);
+  
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
+  
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(passwordData.newPassword.length < 6 ){
+      toast.error('Mật khẩu mới không được ngắn hơn 6 ký tự')
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Mật khẩu mới không khớp');
+      return;
+    }
+  
     setIsLoading(true);
     try {
-      await updateProfile(profileData);
-      toast.success('Cập nhật thông tin thành công');
-      setIsEditing(false);
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi cập nhật thông tin');
+      await authService.changePassword(passwordData.oldPassword, passwordData.newPassword);
+      toast.success('Đổi mật khẩu thành công');
+      authService.logout();
+      logout();
+      router.push('/auth/login');
+      setPasswordData({
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setIsChangingPassword(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Đổi mật khẩu thất bại');
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const UserId = Number(user?.id)
+      await authService.updateUserProfile(UserId,profileData);
+      toast.success('Cập nhật thông tin thành công');
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Có lỗi xảy ra khi cập nhật thông tin');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -237,47 +278,80 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="grid gap-6">
-                          <FormItem>
-                            <FormLabel>Họ và tên</FormLabel>
-                            <FormControl>
-                              <Input
-                                disabled={!isEditing}
-                                value={profileData.fullName}
-                                onChange={(e) => setProfileData(prev => ({
-                                  ...prev,
-                                  fullName: e.target.value
-                                }))}
-                                className="bg-white"
-                              />
-                            </FormControl>
-                          </FormItem>
+  {/* Username field */}
+  <FormItem>
+    <FormLabel>Tên đăng nhập</FormLabel>
+    <FormControl>
+      <Input
+        disabled={!isEditing}
+        value={profileData.username}
+        onChange={(e) => setProfileData(prev => ({
+          ...prev,
+          username: e.target.value
+        }))}
+        className="bg-white"
+      />
+    </FormControl>
+  </FormItem>
 
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input
-                                disabled
-                                value={profileData.email}
-                                className="bg-gray-50"
-                              />
-                            </FormControl>
-                          </FormItem>
+  <FormItem>
+    <FormLabel>Họ và tên</FormLabel>
+    <FormControl>
+      <Input
+        disabled={!isEditing}
+        value={profileData.fullName}
+        onChange={(e) => setProfileData(prev => ({
+          ...prev,
+          fullName: e.target.value
+        }))}
+        className="bg-white"
+      />
+    </FormControl>
+  </FormItem>
 
-                          <FormItem>
-                            <FormLabel>Số điện thoại</FormLabel>
-                            <FormControl>
-                              <Input
-                                disabled={!isEditing}
-                                value={profileData.phoneNumber}
-                                onChange={(e) => setProfileData(prev => ({
-                                  ...prev,
-                                  phoneNumber: e.target.value
-                                }))}
-                                className="bg-white"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        </div>
+  <FormItem>
+    <FormLabel>Email</FormLabel>
+    <FormControl>
+      <Input
+        disabled
+        value={profileData.email}
+        className="bg-gray-50"
+      />
+    </FormControl>
+  </FormItem>
+
+  <FormItem>
+    <FormLabel>Số điện thoại</FormLabel>
+    <FormControl>
+      <Input
+        disabled={!isEditing}
+        value={profileData.phoneNumber}
+        onChange={(e) => setProfileData(prev => ({
+          ...prev,
+          phoneNumber: e.target.value
+        }))}
+        className="bg-white"
+      />
+    </FormControl>
+  </FormItem>
+
+  {/* Address field */}
+  <FormItem>
+    <FormLabel>Địa chỉ</FormLabel>
+    <FormControl>
+      <Input
+        disabled={!isEditing}
+        value={profileData.address}
+        onChange={(e) => setProfileData(prev => ({
+          ...prev,
+          address: e.target.value
+        }))}
+        className="bg-white"
+      />
+    </FormControl>
+  </FormItem>
+</div>
+
 
                         <div className="flex justify-end space-x-4 pt-4">
                           {isEditing ? (
@@ -341,7 +415,88 @@ export default function ProfilePage() {
                         disabled={isLoading}
                       />
                     </div>
+                                {/* Password change section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h4 className="text-sm font-medium">Đổi mật khẩu</h4>
+            <p className="text-sm text-muted-foreground">
+              Cập nhật mật khẩu để bảo vệ tài khoản của bạn
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setIsChangingPassword(!isChangingPassword)}
+          >
+            {isChangingPassword ? 'Hủy' : 'Đổi mật khẩu'}
+          </Button>
+        </div>
 
+        {isChangingPassword && (
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <FormItem>
+              <FormLabel>Mật khẩu hiện tại</FormLabel>
+              <FormControl>
+                <Input
+                  type="password"
+                  value={passwordData.oldPassword}
+                  onChange={(e) => setPasswordData(prev => ({
+                    ...prev,
+                    oldPassword: e.target.value
+                  }))}
+                  disabled={isLoading}
+                />
+              </FormControl>
+            </FormItem>
+
+            <FormItem>
+              <FormLabel>Mật khẩu mới</FormLabel>
+              <FormControl>
+                <Input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData(prev => ({
+                    ...prev,
+                    newPassword: e.target.value
+                  }))}
+                  disabled={isLoading}
+                />
+              </FormControl>
+            </FormItem>
+
+            <FormItem>
+              <FormLabel>Xác nhận mật khẩu mới</FormLabel>
+              <FormControl>
+                <Input
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData(prev => ({
+                    ...prev,
+                    confirmPassword: e.target.value
+                  }))}
+                  disabled={isLoading}
+                />
+              </FormControl>
+            </FormItem>
+
+            <div className="flex justify-end space-x-4">
+              <Button
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang cập nhật
+                  </>
+                ) : (
+                  'Cập nhật mật khẩu'
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
                     <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>

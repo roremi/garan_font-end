@@ -23,7 +23,21 @@ export interface TwoFactorValidationResponse {
   userId: number;
   message: string;
 }
+export interface EmailVerificationRequest {
+  email: string;
+}
 
+
+export interface VerifyOTPRequest {
+  email: string;
+  otp: string;
+}
+
+export interface ApiResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 export interface UserProfile {
   id: number;
   username: string;
