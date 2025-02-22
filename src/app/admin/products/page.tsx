@@ -1,4 +1,3 @@
-// pages/products.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,6 +15,8 @@ import { ProductModal } from '@/components/ProductModal';
 import { useToast } from "@/components/ui/use-toast";
 import { api } from '@/services/api';
 import { Product } from '@/types/product';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,20 +24,37 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
 
-  // Fetch products when component mounts
+  // Kiểm tra quyền Admin khi component mount
   useEffect(() => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (Number(user.role) !== 0) { // 0 là role Admin
+      toast({
+        title: "Không có quyền truy cập",
+        description: "Bạn không có quyền truy cập trang quản lý sản phẩm",
+        variant: "destructive",
+      });
+      router.push('/');
+      return;
+    }
+
     loadProducts();
-  }, []);
+  }, [user, router]);
 
   const loadProducts = async () => {
     try {
       const data = await api.getProducts();
       setProducts(data);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: "Không thể tải danh sách sản phẩm",
+        description: error.message || "Không thể tải danh sách sản phẩm",
         variant: "destructive",
       });
     }
@@ -44,16 +62,26 @@ export default function ProductsPage() {
 
   const handleAddProduct = async (productData: Partial<Product>) => {
     try {
+      if (!user || Number(user.role) !== 0) {
+        toast({
+          title: "Không có quyền",
+          description: "Bạn không có quyền thêm sản phẩm",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await api.addProduct(productData as Omit<Product, 'id'>);
       loadProducts();
+      setIsModalOpen(false);
       toast({
         title: "Thành công",
         description: "Thêm sản phẩm mới thành công",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: "Không thể thêm sản phẩm",
+        description: error.message || "Không thể thêm sản phẩm",
         variant: "destructive",
       });
     }
@@ -62,54 +90,94 @@ export default function ProductsPage() {
   const handleEditProduct = async (productData: Partial<Product>) => {
     if (!selectedProduct) return;
     try {
+      if (!user || Number(user.role) !== 0) {
+        toast({
+          title: "Không có quyền",
+          description: "Bạn không có quyền sửa sản phẩm",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await api.updateProduct(selectedProduct.id, {
         ...selectedProduct,
         ...productData,
       } as Product);
       loadProducts();
+      setIsModalOpen(false);
       toast({
         title: "Thành công",
         description: "Cập nhật sản phẩm thành công",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: "Không thể cập nhật sản phẩm",
+        description: error.message || "Không thể cập nhật sản phẩm",
         variant: "destructive",
       });
     }
   };
 
   const handleDeleteProduct = async (id: number) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
-      try {
+    try {
+      if (!user || Number(user.role) !== 0) {
+        toast({
+          title: "Không có quyền",
+          description: "Bạn không có quyền xóa sản phẩm",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
         await api.deleteProduct(id);
         loadProducts();
         toast({
           title: "Thành công",
           description: "Xóa sản phẩm thành công",
         });
-      } catch (error) {
-        toast({
-          title: "Lỗi",
-          description: "Không thể xóa sản phẩm",
-          variant: "destructive",
-        });
       }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể xóa sản phẩm",
+        variant: "destructive",
+      });
     }
   };
 
   const openAddModal = () => {
+    if (!user || Number(user.role) !== 0) {
+      toast({
+        title: "Không có quyền",
+        description: "Bạn không có quyền thêm sản phẩm",
+        variant: "destructive",
+      });
+      return;
+    }
     setModalMode('add');
     setSelectedProduct(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (product: Product) => {
+    if (!user || Number(user.role) !== 0) {
+      toast({
+        title: "Không có quyền",
+        description: "Bạn không có quyền sửa sản phẩm",
+        variant: "destructive",
+      });
+      return;
+    }
     setModalMode('edit');
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
+
+  // Nếu không phải admin, không hiển thị gì cả
+  if (!user || Number(user.role) !== 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-6 p-6">

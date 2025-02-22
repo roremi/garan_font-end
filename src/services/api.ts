@@ -3,7 +3,20 @@ import { Category } from "@/types/Category";
 import { ImageUploadResponse } from "@/types/image";
 
 const API_URL = "http://localhost:5000/api";
-
+const getHeaders = (contentType: boolean = true): HeadersInit => {
+  const headers: Record<string, string> = {};
+  
+  if (contentType) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
 export const api = {
   // lấy tất cả sản phẩm
   async getProducts(): Promise<Product[]> {
@@ -23,9 +36,7 @@ export const api = {
     return response.json();
   },
 
-  // Thêm sản phẩm mới
   addProduct: async (product: Omit<Product, "id">): Promise<Product> => {
-    // Format giá trước khi gửi
     const formattedProduct = {
       ...product,
       price: Number(product.price),
@@ -33,18 +44,18 @@ export const api = {
 
     const response = await fetch(`${API_URL}/products`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getHeaders(),
       body: JSON.stringify(formattedProduct),
     });
-    if (!response.ok) throw new Error("Failed to add product");
+    
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || "Failed to add product");
+    }
     return response.json();
   },
 
-  // Cập nhật sản phẩm
   updateProduct: async (id: number, product: Product): Promise<void> => {
-    // Format giá trước khi gửi
     const formattedProduct = {
       ...product,
       price: Number(product.price),
@@ -52,28 +63,27 @@ export const api = {
 
     const response = await fetch(`${API_URL}/products/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getHeaders(),
       body: JSON.stringify(formattedProduct),
     });
-    if (!response.ok) throw new Error("Failed to update product");
-  },
-
-  // Xóa sản phẩm
-  deleteProduct: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/products/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
+    
     if (!response.ok) {
-      throw new Error("Failed to delete product");
+      const error = await response.text();
+      throw new Error(error || "Failed to update product");
     }
   },
 
+  deleteProduct: async (id: number): Promise<void> => {
+    const response = await fetch(`${API_URL}/products/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || "Failed to delete product");
+    }
+  },
   // lấy tất cả category
 
   async getCategories(): Promise<Category[]> {
