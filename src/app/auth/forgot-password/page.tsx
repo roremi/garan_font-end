@@ -38,16 +38,15 @@ export default function ForgotPassword() {
     e?.preventDefault();
     setError('');
     setIsSendingOTP(true);
-
+  
     try {
       if (!email) {
         throw new Error('Vui lòng nhập email');
       }
-
       console.log('Sending verification email:', email);
-      const response = await authService.sendVerificationEmail(email);
+      const response = await authService.sendVerificationEmailForForgotpassword(email);
       console.log('Response:', response);
-
+  
       if (response.success) {
         setShowOtpInput(true);
         startCountdown();
@@ -63,7 +62,7 @@ export default function ForgotPassword() {
       setIsSendingOTP(false);
     }
   };
-
+  
   // Hàm xác thực OTP
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
