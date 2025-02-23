@@ -2,7 +2,7 @@ import { Product } from "@/types/product";
 import { Category } from "@/types/Category";
 import { ImageUploadResponse } from "@/types/image";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://localhost:5001/api";
 const getHeaders = (contentType: boolean = true): HeadersInit => {
   const headers: Record<string, string> = {};
   
@@ -10,7 +10,7 @@ const getHeaders = (contentType: boolean = true): HeadersInit => {
     headers["Content-Type"] = "application/json";
   }
   
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
