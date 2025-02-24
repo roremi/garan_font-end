@@ -66,9 +66,9 @@ export default function OrderHistory() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      router.push('/auth/login');
-    }
+    // if (!isAuthenticated || !user) {
+    //   router.push('/auth/login');
+    // }
   }, [isAuthenticated, router]);
 
 
