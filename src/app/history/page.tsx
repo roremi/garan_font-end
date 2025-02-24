@@ -66,9 +66,9 @@ export default function OrderHistory() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // if (!isAuthenticated || !user) {
-    //   router.push('/auth/login');
-    // }
+    if (!isAuthenticated || !user) {
+      router.push('/auth/login');
+    }
   }, [isAuthenticated, router]);
 
 
@@ -327,28 +327,37 @@ export default function OrderHistory() {
 
             <div className="border rounded-lg p-4 mb-6">
               <h3 className="font-medium mb-3">Các món đã đặt</h3>
-              {orderDetails.map((item) => (
-                <div key={item.id} className="flex justify-between py-2 border-b last:border-0">
-                  <div className="flex items-center gap-4">
-                    {item.imageUrl && (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                    )}
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {formatCurrency(item.price)} x {item.quantity}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-medium">
-                    {formatCurrency(item.price * item.quantity)}
-                  </span>
-                </div>
-              ))}
+              
+              
+{orderDetails.map((item) => (
+  <div key={item.id} className="flex justify-between py-2 border-b last:border-0">
+    <div className="flex items-center gap-4">
+      {item.imageUrl && (
+        <img 
+          src={item.imageUrl} 
+          alt={item.name}
+          className="w-12 h-12 object-cover rounded"
+        />
+      )}
+      <div>
+        <div className="flex items-center gap-2">
+          <p className="font-medium">{item.name}</p>
+          <Badge variant="secondary" className="text-xs">
+            {item.type === 'combo' ? 'Combo' : 'Sản phẩm'}
+          </Badge>
+        </div>
+        <p className="text-sm text-gray-600">
+          {formatCurrency(item.price)} x {item.quantity}
+        </p>
+      </div>
+    </div>
+    <span className="font-medium">
+      {formatCurrency(item.price * item.quantity)}
+    </span>
+  </div>
+))}
+
+
             </div>
 
             <div className="flex justify-between items-center mb-6">

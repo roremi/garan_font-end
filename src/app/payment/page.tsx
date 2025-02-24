@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -8,13 +7,12 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Copy, Check, Timer, AlertCircle } from 'lucide-react';
-import { useToast } from "@/components/ui/use-toast";
+import { toast as toastSoner } from 'sonner';
 import { api } from '@/services/api';
 
 export default function PaymentPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { toast } = useToast();
   const [countdown, setCountdown] = useState(900); // 15 phút
   const [copied, setCopied] = useState<string>('');
   const [isConfirming, setIsConfirming] = useState(false);
@@ -24,7 +22,7 @@ export default function PaymentPage() {
   const amount = searchParams?.get('amount') ?? '0';
 
   const bankInfo = {
-    bankName: "VietinBank", 
+    bankName: "MBBank", 
     accountNumber: "0565251240",
     accountName: "TRAN TAN KHAI",
     branch: "Chi nhánh TP.HCM",
@@ -55,9 +53,8 @@ export default function PaymentPage() {
     setCopied(field);
     setTimeout(() => setCopied(''), 2000);
     
-    toast({
-      title: "Đã sao chép",
-      description: `${field} đã được sao chép vào clipboard`,
+    toastSoner.success("Đã sao chép", {
+      description: `${field} đã được sao chép vào clipboard`
     });
   };
 
@@ -72,29 +69,24 @@ export default function PaymentPage() {
       });
   
       if (checkResult.success) {
-        toast({
-          title: "Xác nhận thanh toán thành công",
-          description: checkResult.message || "Chúng tôi sẽ kiểm tra và xử lý đơn hàng của bạn trong thời gian sớm nhất",
-          variant: "default",
+        toastSoner.success("Xác nhận thanh toán thành công", {
+          description: checkResult.message || "Chúng tôi sẽ kiểm tra và xử lý đơn hàng của bạn trong thời gian sớm nhất"
         });
   
         // Chuyển hướng đến trang orders sau 2 giây
         setTimeout(() => {
-          router.push('/orders');
+          router.push('/history');
+          
         }, 2000);
       } else {
-        toast({
-          variant: "destructive",
-          title: "Thông báo",
-          description: checkResult.message || "Không tìm thấy giao dịch. Vui lòng thử lại sau vài phút",
+        toastSoner.error("Thông báo", {
+          description: checkResult.message || "Không tìm thấy giao dịch. Vui lòng thử lại sau vài phút"
         });
       }
     } catch (error) {
       console.error('Error checking transaction:', error);
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại sau",
+      toastSoner.error("Lỗi", {
+        description: "Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại sau"
       });
     } finally {
       setIsConfirming(false);

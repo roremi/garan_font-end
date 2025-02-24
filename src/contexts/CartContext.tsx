@@ -8,13 +8,14 @@ export interface CartItem {
   price: number;
   quantity: number;
   imageUrl: string;
+  type: 'product' | 'combo'; // Đảm bảo type là bắt buộc
 }
 
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: CartItem) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeFromCart: (productId: number, type: 'product' | 'combo') => void;
+  updateQuantity: (productId: number, quantity: number, type: 'product' | 'combo') => void;
   clearCart: () => void;
   totalItems: number;
   totalAmount: number;
@@ -40,11 +41,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: CartItem) => {
     setItems(currentItems => {
-      const existingItem = currentItems.find(item => item.id === product.id);
+      const existingItem = currentItems.find(
+        item => item.id === product.id && item.type === product.type
+      );
       
       if (existingItem) {
         return currentItems.map(item =>
-          item.id === product.id
+          item.id === product.id && item.type === product.type
             ? { ...item, quantity: item.quantity + product.quantity }
             : item
         );
@@ -54,19 +57,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const removeFromCart = (productId: number) => {
-    setItems(currentItems => currentItems.filter(item => item.id !== productId));
+  const removeFromCart = (productId: number, type: 'product' | 'combo') => {
+    setItems(currentItems => 
+      currentItems.filter(item => !(item.id === productId && item.type === type))
+    );
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+
+  const updateQuantity = (productId: number, quantity: number, type: 'product' | 'combo') => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, type);
       return;
     }
 
     setItems(currentItems =>
       currentItems.map(item =>
-        item.id === productId ? { ...item, quantity } : item
+        item.id === productId && item.type === type
+          ? { ...item, quantity }
+          : item
       )
     );
   };

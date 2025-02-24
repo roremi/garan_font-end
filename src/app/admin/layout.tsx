@@ -45,6 +45,11 @@ const menuItems = [
     path: '/admin/Category'
   },
   {
+    title: 'Quản lý Combo',
+    icon: FolderOpen,
+    path: '/admin/Combo'
+  },
+  {
     title: 'Quản lý đơn hàng',
     icon: ShoppingBag,
     path: '/admin/orders',
