@@ -10,7 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
-const DELIVERY_FEE = 15000;
+const DELIVERY_FEE = 0;
 const FREE_SHIPPING_THRESHOLD = 200000;
 const DELIVERY_RADIUS = 5; // km
 
@@ -74,7 +74,7 @@ export default function CartPage() {
                 ) : (
                   <ul className="divide-y divide-gray-200">
                     {items.map((item) => (
-                      <li key={item.id} className="p-6">
+                       <li key={`${item.type}-${item.id}`} className="p-6">
                         <div className="flex items-center">
                           {/* Hình ảnh món */}
                           <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 relative">
@@ -116,7 +116,7 @@ export default function CartPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1, item.type)}
                                   disabled={item.quantity <= 1}
                                 >
                                   <Minus className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function CartPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1, item.type)}
                                 >
                                   <Plus className="h-4 w-4" />
                                 </Button>
@@ -137,7 +137,7 @@ export default function CartPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                onClick={() => removeFromCart(item.id)}
+                                onClick={() => removeFromCart(item.id, item.type)}
                               >
                                 <Trash2 className="h-5 w-5" />
                               </Button>
@@ -189,7 +189,7 @@ export default function CartPage() {
                     <span>Phí giao hàng</span>
                     <span>
                       {deliveryFee === 0 ? (
-                        <span className="text-green-600">Miễn phí</span>
+                        <span className="text-green-600">Chưa tính phí ship</span>
                       ) : (
                         new Intl.NumberFormat('vi-VN', {
                           style: 'currency',

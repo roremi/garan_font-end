@@ -100,6 +100,7 @@ export default function Header() {
           <nav className="hidden md:flex space-x-8">
             <Link href="/" className="text-gray-700 hover:text-orange-600">Trang chủ</Link>
             <Link href="/menu" className="text-gray-700 hover:text-orange-600">Thực đơn</Link>
+            <Link href="/combo" className="text-gray-700 hover:text-orange-600">Combo</Link>
             <Link href="/about" className="text-gray-700 hover:text-orange-600">Về chúng tôi</Link>
             <Link href="/contact" className="text-gray-700 hover:text-orange-600">Liên hệ</Link>
           </nav>
@@ -137,7 +138,7 @@ export default function Header() {
                     
                     <div className="space-y-4 max-h-60 overflow-auto">
                       {items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3">
+                         <div key={`${item.type}-${item.id}`} className="flex items-center gap-3">
                           <img
                             src={item.imageUrl}
                             alt={item.name}
@@ -151,7 +152,7 @@ export default function Header() {
                                   className="text-gray-500 hover:text-gray-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    updateQuantity(item.id, item.quantity - 1);
+                                    updateQuantity(item.id, item.quantity - 1, item.type);
                                   }}
                                 >
                                   -
@@ -161,7 +162,7 @@ export default function Header() {
                                   className="text-gray-500 hover:text-gray-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    updateQuantity(item.id, item.quantity + 1);
+                                    updateQuantity(item.id, item.quantity + 1, item.type);
                                   }}
                                 >
                                   +
@@ -177,7 +178,7 @@ export default function Header() {
                                 className="text-red-500 hover:text-red-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  removeFromCart(item.id);
+                                  removeFromCart(item.id, item.type);
                                 }}
                               >
                                 <Trash2 className="h-4 w-4" />

@@ -1,8 +1,11 @@
 import { Product } from './product';
+import { Combo } from './combo';
 
 export interface CartItem {
-  product: Product;
+  product?: Product;
+  combo?: Combo;
   quantity: number;
+  type: 'product' | 'combo';
 }
 
 export interface OrderDetails {

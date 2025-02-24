@@ -1,6 +1,7 @@
 import { Product } from "@/types/product";
 import { Category } from "@/types/Category";
 import { ImageUploadResponse } from "@/types/image";
+import { Combo, ComboProduct } from '@/types/combo';
 
 const API_URL = "https://localhost:5001/api";
 const getHeaders = (contentType: boolean = true): HeadersInit => {
@@ -264,7 +265,7 @@ export const api = {
     );
     const data = await response.json();
 
-    if (!data.status || data.status !== 200) {
+    if (!data.status || data.status !== 200) {  
       throw new Error(data.message || "Failed to confirm order");
     }
     return data;
@@ -294,4 +295,213 @@ export const api = {
 
     return response.json();
   },
+
+  //Location
+  getProvince: async () => {
+    const response = await fetch(`${API_URL}/Location/province`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        accept: '*/*'
+      },   
+    });
+  
+    if (!response.ok) {
+      throw new Error('Failed to get provinces');
+    }
+  
+    return response.json();
+  },
+
+  getDistricts: async (provinceId?: number) => {
+    let url = `${API_URL}/Location/districts`;
+    if (provinceId) {
+      url += `?province_id=${provinceId}`;
+    }
+  
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        accept: '*/*'
+      },
+    });
+  
+    if (!response.ok) {
+      throw new Error('Failed to get districts');
+    }
+  
+    return response.json();
+  },
+
+  getWards: async (districtId: number) => {
+    if (!districtId) {
+      throw new Error('District ID is required');
+    }
+  
+    const response = await fetch(`${API_URL}/Location/wards?district_id=${districtId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        accept: '*/*'
+      },
+    });
+  
+    if (!response.ok) {
+      throw new Error('Failed to get wards');
+    }
+  
+    return response.json();
+  },
+
+  // SHIPPING FEE API
+  getShippingFee: async (params: {
+    from_district_id: number;
+    from_ward_code: string;
+    to_district_id: number;
+    to_ward_code: string;
+    service_id?: number;
+    weight?: number;
+    length?: number;
+    width?: number;
+    height?: number;
+  }) => {
+    const queryParams = new URLSearchParams({
+      from_district_id: params.from_district_id.toString(),
+      from_ward_code: params.from_ward_code,
+      to_district_id: params.to_district_id.toString(),
+      to_ward_code: params.to_ward_code,
+      service_id: (params.service_id || 53320).toString(),
+      weight: (params.weight || 20).toString(),
+      length: (params.length || 20).toString(),
+      width: (params.width || 20).toString(),
+      height: (params.height || 20).toString()
+    });
+
+    const response = await fetch(
+      `${API_URL}/ShipingFee/calculate?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: getHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Không thể tính phí vận chuyển');
+    }
+
+    return response.json();
+  },
+
+
+
+
+  //combo
+// Thêm vào file api.ts
+// Các API calls cho Combo
+async getCombos(): Promise<Combo[]> {
+  try {
+    const response = await fetch(`${API_URL}/Combos`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch combos');
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching combos:', error);
+    throw new Error('Failed to fetch combos');
+  }
+},
+
+
+async getComboById(id: number): Promise<Combo> {
+  const response = await fetch(`${API_URL}/Combos/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch combo');
+  }
+  return response.json();
+},
+
+async addCombo(combo: Omit<Combo, 'id'>): Promise<Combo> {
+  const response = await fetch(`${API_URL}/Combos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(combo),
+  });
+  if (!response.ok) throw new Error('Failed to add combo');
+  return response.json();
+},
+
+async updateCombo(id: number, combo: Combo): Promise<void> {
+  const response = await fetch(`${API_URL}/Combos/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(combo),
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Update combo error:', errorText);
+    throw new Error('Failed to update combo');
+  }
+},
+
+async deleteCombo(id: number): Promise<void> {
+  const response = await fetch(`${API_URL}/Combos/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete combo');
+},
+
+// API calls cho ComboProducts
+async getComboProducts(): Promise<ComboProduct[]> {
+  const response = await fetch(`${API_URL}/ComboProducts`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch combo products');
+  }
+  return response.json();
+},
+async getComboProductsByComboId(comboId: number): Promise<ComboProduct[]> {
+  const response = await fetch(`${API_URL}/ComboProducts/combo/${comboId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch combo products');
+  }
+  const data = await response.json();
+  return data;
+},
+
+async addComboProduct(comboProduct: ComboProduct): Promise<ComboProduct> {
+  const response = await fetch(`${API_URL}/ComboProducts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(comboProduct),
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Add combo product error:', errorText);
+    throw new Error('Failed to add combo product');
+  }
+  
+  return response.json();
+},
+
+async deleteComboProduct(comboId: number, productId: number): Promise<void> {
+  const response = await fetch(`${API_URL}/ComboProducts/${comboId}/${productId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Delete combo product error:', errorText);
+    throw new Error('Failed to delete combo product');
+  }
+}
 };
