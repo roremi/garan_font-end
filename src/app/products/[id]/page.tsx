@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useCart } from '@/contexts/CartContext'; // Thêm import CartContext
+import FeedbackSection from '@/components/FeedbackSection';
 
 export default function ProductDetail() {
   const router = useRouter();
@@ -138,7 +139,22 @@ export default function ProductDetail() {
       </div>
     );
   }
-
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header />
+        <main className="container mx-auto px-4 pt-24">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">Không tìm thấy thông tin sản phẩm</p>
+            <Button onClick={() => router.back()} className="mt-4">
+              Quay lại
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -154,79 +170,80 @@ export default function ProductDetail() {
             Quay lại
           </Button>
 
-          {product && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                <Image
-                  src={product.imageUrl || '/images/placeholder.jpg'}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+              <Image
+                src={product.imageUrl || '/images/placeholder.jpg'}
+                alt={product.name}
+                fill
+                className="object-cover"
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </div>
+
+            <div className="space-y-6">
+              <h1 className="text-3xl font-bold text-gray-900">
+                {product.name}
+              </h1>
+              
+              <p className="text-gray-600">
+                {product.description}
+              </p>
+
+              <div className="text-2xl font-bold text-orange-600">
+                {new Intl.NumberFormat('vi-VN', {
+                  style: 'currency',
+                  currency: 'VND'
+                }).format(product.price)}
               </div>
 
-              <div className="space-y-6">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {product.name}
-                </h1>
-                
-                <p className="text-gray-600">
-                  {product.description}
-                </p>
-
-                <div className="text-2xl font-bold text-orange-600">
-                  {new Intl.NumberFormat('vi-VN', {
-                    style: 'currency',
-                    currency: 'VND'
-                  }).format(product.price)}
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700">Số lượng:</span>
+                <div className="flex items-center border rounded-lg">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleQuantityChange('decrease')}
+                    disabled={quantity <= 1}
+                    className="h-10 w-10"
+                  >
+                    <MinusIcon className="w-4 h-4" />
+                  </Button>
+                  <span className="w-12 text-center">{quantity}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleQuantityChange('increase')}
+                    className="h-10 w-10"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-4">
-                  <span className="text-gray-700">Số lượng:</span>
-                  <div className="flex items-center border rounded-lg">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleQuantityChange('decrease')}
-                      disabled={quantity <= 1}
-                      className="h-10 w-10"
-                    >
-                      <MinusIcon className="w-4 h-4" />
-                    </Button>
-                    <span className="w-12 text-center">{quantity}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleQuantityChange('increase')}
-                      className="h-10 w-10"
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+              <Button
+                className="w-full md:w-auto"
+                size="lg"
+                disabled={!product.isAvailable}
+                onClick={() => handleAddToCart(product)}
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                {product.isAvailable ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+              </Button>
 
-                <Button
-                  className="w-full md:w-auto"
-                  size="lg"
-                  disabled={!product.isAvailable}
-                  onClick={() => handleAddToCart(product)}
-                >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  {product.isAvailable ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
-                </Button>
-
-                <div className="text-sm">
-                  <span className="font-semibold">Trạng thái: </span>
-                  <span className={product.isAvailable ? 'text-green-600' : 'text-red-600'}>
-                    {product.isAvailable ? 'Còn hàng' : 'Hết hàng'}
-                  </span>
-                </div>
+              <div className="text-sm">
+                <span className="font-semibold">Trạng thái: </span>
+                <span className={product.isAvailable ? 'text-green-600' : 'text-red-600'}>
+                  {product.isAvailable ? 'Còn hàng' : 'Hết hàng'}
+                </span>
               </div>
             </div>
-          )}
+          </div>
         </div>
+
+        {/* FeedbackSection chỉ render khi có product */}
+        <FeedbackSection productId={product.id} />
       </main>
 
       <Footer />
