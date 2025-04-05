@@ -2,8 +2,11 @@ import { Product } from "@/types/product";
 import { Category } from "@/types/Category";
 import { ImageUploadResponse } from "@/types/image";
 import { Combo, ComboProduct } from '@/types/combo';
+import { Feedback } from "@/types/feedback";
 
 const API_URL = "https://localhost:5001/api";
+const API_URL1 = "https://localhost:5000/api";
+
 const getHeaders = (contentType: boolean = true): HeadersInit => {
   const headers: Record<string, string> = {};
   
@@ -503,5 +506,38 @@ async deleteComboProduct(comboId: number, productId: number): Promise<void> {
     console.error('Delete combo product error:', errorText);
     throw new Error('Failed to delete combo product');
   }
-}
+},
+
+
+// feedback
+
+// Lấy feedback theo product id
+async getProductFeedbacks(productId: number): Promise<Feedback[]> {
+  const response = await fetch(`${API_URL}/Feedback/Product/${productId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch product feedbacks');
+  }
+  return response.json();
+},
+
+// Thêm feedback mới
+async addFeedback(feedback: {
+  productId: number;
+  rating: number;
+  comment: string;
+}): Promise<Feedback> {
+  const response = await fetch(`${API_URL}/Feedback`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(feedback)
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Failed to add feedback');
+  }
+
+  return response.json();
+},
+
 };
