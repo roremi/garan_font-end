@@ -1,8 +1,14 @@
+// types/feedback.ts
+interface User {
+  id: number;
+  username: string;
+  fullName: string;
+}
+
 export interface Feedback {
-    id: number;
-    productId: number;
-    userId: number;
-    rating: number;
-    comment: string;
-    createdAt: string;
-  }
+  id: number;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  user: User;
+}
