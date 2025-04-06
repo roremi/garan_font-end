@@ -5,6 +5,8 @@ import { StarIcon } from 'lucide-react';
 import { api } from '@/services/api';
 import { Feedback } from '@/types/feedback';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
 
 interface FeedbackSectionProps {
   productId: number;
@@ -69,6 +71,13 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
       setIsSubmitting(false);
     }
   };
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
 
   return (
     <div className="mt-12">
@@ -123,22 +132,47 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
         ) : (
           feedbacks.map((feedback) => (
             <div key={feedback.id} className="border rounded-lg p-4">
-              <div className="flex items-center gap-1 mb-2">
-                {[...Array(5)].map((_, index) => (
-                  <StarIcon
-                    key={index}
-                    className={`w-4 h-4 ${
-                      index < feedback.rating 
-                        ? 'text-yellow-400 fill-yellow-400' 
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
+              <div className="flex items-start space-x-4">
+                {/* Avatar */}
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {getInitials(feedback.user.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1">
+                  {/* Tên người dùng */}
+                  <p className="font-medium mb-1">{feedback.user.fullName}</p>
+
+                  {/* Rating stars */}
+                  <div className="flex items-center gap-1 mb-2">
+                    {[...Array(5)].map((_, index) => (
+                      <StarIcon
+                        key={index}
+                        className={`w-4 h-4 ${
+                          index < feedback.rating 
+                            ? 'text-yellow-400 fill-yellow-400' 
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Comment */}
+                  <p className="text-gray-700">{feedback.comment}</p>
+
+                  {/* Thời gian */}
+                  <p className="text-sm text-gray-500 mt-2">
+                    {new Date(feedback.createdAt).toLocaleDateString('vi-VN', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-700">{feedback.comment}</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {new Date(feedback.createdAt).toLocaleDateString('vi-VN')}
-              </p>
             </div>
           ))
         )}
