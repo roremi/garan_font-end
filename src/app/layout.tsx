@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from 'sonner';
 import { CartProvider } from '@/contexts/CartContext';
 import { AuthProvider } from '@/contexts/AuthContext';
-
+import ChatComponent from '@/components/chat/ChatComponent';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,12 +19,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="vi">
       <body className={inter.className}>
-      <AuthProvider>
-        <CartProvider>
-          {children}
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+            <ChatComponent />
+          </CartProvider>
         </AuthProvider>
         <Toaster 
           position="top-center" 
