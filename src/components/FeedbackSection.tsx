@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { StarIcon } from 'lucide-react';
+import { StarIcon, Edit2Icon, Trash2Icon } from 'lucide-react';
 import { api } from '@/services/api';
 import { Feedback } from '@/types/feedback';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FeedbackSectionProps {
   productId: number;
@@ -17,9 +26,23 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingFeedback, setEditingFeedback] = useState<Feedback | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [feedbackToDelete, setFeedbackToDelete] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
     loadFeedbacks();
+    // Lấy ID người dùng từ localStorage hoặc context
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUserId(user.id); // Lấy id từ object user
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
   }, [productId]);
 
   const loadFeedbacks = async () => {
@@ -41,26 +64,35 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
 
     setIsSubmitting(true);
     try {
-      await api.addFeedback({
-        productId,
-        rating: newRating,
-        comment: newComment.trim()
-      });
+      if (editingFeedback) {
+        // Cập nhật feedback
+        await api.updateFeedback(editingFeedback.id, {
+          rating: newRating,
+          comment: newComment.trim()
+        });
+        toast.success('Đã cập nhật đánh giá thành công');
+        setEditingFeedback(null);
+      } else {
+        // Thêm feedback mới
+        await api.addFeedback({
+          productId,
+          rating: newRating,
+          comment: newComment.trim()
+        });
+        toast.success('Cảm ơn bạn đã đánh giá sản phẩm');
+      }
 
       // Reset form và load lại feedbacks
       setNewComment('');
       setNewRating(5);
       await loadFeedbacks();
 
-      toast.success('Cảm ơn bạn đã đánh giá sản phẩm');
-
     } catch (error: any) {
-      let errorMessage = "Không thể gửi đánh giá";
+      let errorMessage = editingFeedback 
+        ? "Không thể cập nhật đánh giá" 
+        : "Không thể gửi đánh giá";
       
-      // Kiểm tra message từ API response
-      if (error?.response?.data?.message === "Bạn cần mua sản phẩm trước khi đánh giá") {
-        toast.error('Bạn cần mua sản phẩm trước khi đánh giá');
-      } else if (error?.response?.data?.message) {
+      if (error?.response?.data?.message) {
         toast.error(error.response.data.message);
       } else if (error?.message) {
         toast.error(error.message);
@@ -71,6 +103,39 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
       setIsSubmitting(false);
     }
   };
+
+  const handleEditClick = (feedback: Feedback) => {
+    setEditingFeedback(feedback);
+    setNewRating(feedback.rating);
+    setNewComment(feedback.comment);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFeedback(null);
+    setNewRating(5);
+    setNewComment('');
+  };
+
+  const handleDeleteClick = (feedbackId: number) => {
+    setFeedbackToDelete(feedbackId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!feedbackToDelete) return;
+
+    try {
+      await api.deleteFeedback(feedbackToDelete);
+      setFeedbacks(feedbacks.filter(f => f.id !== feedbackToDelete));
+      toast.success('Đã xóa đánh giá thành công');
+    } catch (error) {
+      toast.error('Không thể xóa đánh giá');
+    } finally {
+      setShowDeleteDialog(false);
+      setFeedbackToDelete(null);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -79,11 +144,15 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
       .toUpperCase();
   };
 
+  const canModifyFeedback = (feedback: Feedback) => {
+    return currentUserId === feedback.user.id;
+  };
+
   return (
     <div className="mt-12">
       <h2 className="text-2xl font-bold mb-6">Đánh giá sản phẩm</h2>
 
-      {/* Form thêm đánh giá */}
+      {/* Form thêm/sửa đánh giá */}
       <form onSubmit={handleSubmitFeedback} className="mb-8">
         <div className="mb-4">
           <div className="flex items-center gap-1 mb-2">
@@ -109,20 +178,32 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
             className="min-h-[100px]"
           />
         </div>
-        <Button 
-          type="submit" 
-          disabled={isSubmitting}
-          className="w-full md:w-auto"
-        >
-          {isSubmitting ? (
-            <div className="flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Đang gửi...
-            </div>
-          ) : (
-            'Gửi đánh giá'
+        <div className="flex gap-2">
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full md:w-auto"
+          >
+            {isSubmitting ? (
+              <div className="flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                {editingFeedback ? 'Đang cập nhật...' : 'Đang gửi...'}
+              </div>
+            ) : (
+              editingFeedback ? 'Cập nhật đánh giá' : 'Gửi đánh giá'
+            )}
+          </Button>
+          {editingFeedback && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancelEdit}
+              className="w-full md:w-auto"
+            >
+              Hủy
+            </Button>
           )}
-        </Button>
+        </div>
       </form>
 
       {/* Danh sách đánh giá */}
@@ -133,7 +214,6 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
           feedbacks.map((feedback) => (
             <div key={feedback.id} className="border rounded-lg p-4">
               <div className="flex items-start space-x-4">
-                {/* Avatar */}
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {getInitials(feedback.user.fullName)}
@@ -141,27 +221,43 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
                 </Avatar>
 
                 <div className="flex-1">
-                  {/* Tên người dùng */}
-                  <p className="font-medium mb-1">{feedback.user.fullName}</p>
-
-                  {/* Rating stars */}
-                  <div className="flex items-center gap-1 mb-2">
-                    {[...Array(5)].map((_, index) => (
-                      <StarIcon
-                        key={index}
-                        className={`w-4 h-4 ${
-                          index < feedback.rating 
-                            ? 'text-yellow-400 fill-yellow-400' 
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium mb-1">{feedback.user.fullName}</p>
+                      <div className="flex items-center gap-1 mb-2">
+                        {[...Array(5)].map((_, index) => (
+                          <StarIcon
+                            key={index}
+                            className={`w-4 h-4 ${
+                              index < feedback.rating 
+                                ? 'text-yellow-400 fill-yellow-400' 
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {canModifyFeedback(feedback) && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditClick(feedback)}
+                        >
+                          <Edit2Icon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(feedback.id)}
+                        >
+                          <Trash2Icon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Comment */}
                   <p className="text-gray-700">{feedback.comment}</p>
-
-                  {/* Thời gian */}
                   <p className="text-sm text-gray-500 mt-2">
                     {new Date(feedback.createdAt).toLocaleDateString('vi-VN', {
                       year: 'numeric',
@@ -177,6 +273,26 @@ export default function FeedbackSection({ productId }: FeedbackSectionProps) {
           ))
         )}
       </div>
+
+      {/* Dialog xác nhận xóa */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa đánh giá này không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
