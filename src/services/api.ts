@@ -520,6 +520,33 @@ async getProductFeedbacks(productId: number): Promise<Feedback[]> {
   return response.json();
 },
 
+// Sửa feedback
+async updateFeedback(id: number, feedback: { rating: number; comment: string }): Promise<void> {
+  const response = await fetch(`${API_URL}/Feedback/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(feedback),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Failed to update feedback');
+  }
+},
+
+// Xóa feedback
+async deleteFeedback(id: number): Promise<void> {
+  const response = await fetch(`${API_URL}/Feedback/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Failed to delete feedback');
+  }
+},
+
 // Thêm feedback mới
 async addFeedback(feedback: {
   productId: number;
