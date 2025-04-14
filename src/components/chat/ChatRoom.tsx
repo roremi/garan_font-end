@@ -1,6 +1,6 @@
 // components/chat/ChatRoom.tsx
 import { useState } from 'react';
-import { ChatRoom as ChatRoomType, ChatMessage } from '@/services/chatService';
+import { ChatRoom as ChatRoomType, ChatMessage , ChatRoomStatus } from '@/services/chatService';
 import {formatDistanceToNow} from 'date-fns/formatDistanceToNow';
 import { vi } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,18 @@ interface ChatRoomProps {
   unreadCount?: number;
   onClick: () => void;
 }
-
+const getStatusBadgeColor = (status: ChatRoomStatus) => {
+  switch (status) {
+    case ChatRoomStatus.Pending:
+      return 'bg-yellow-500';
+    case ChatRoomStatus.Success:
+      return 'bg-green-500';
+    case ChatRoomStatus.Closed:
+      return 'bg-red-500';
+    default:
+      return 'bg-gray-500';
+  }
+};
 export default function ChatRoom({ 
   room, 
   isActive, 
@@ -30,7 +41,9 @@ export default function ChatRoom({
       <div className="flex justify-between items-center">
         <h3 className="font-medium truncate">{room.name}</h3>
         {unreadCount > 0 && (
-          <Badge variant="destructive" className="rounded-full">{unreadCount}</Badge>
+           <Badge className={`${getStatusBadgeColor(room.status)}`}>
+           {room.status}
+         </Badge>
         )}
       </div>
       <div className="text-xs text-gray-500">
@@ -49,4 +62,6 @@ export default function ChatRoom({
       )}
     </div>
   );
+  
+  
 }

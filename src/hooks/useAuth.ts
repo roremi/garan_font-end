@@ -1,9 +1,15 @@
 // hooks/useAuth.ts
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { UserProfile } from '@/types/auth';
+
+// Định nghĩa interface cho tham số login
+interface LoginParams {
+  email: string;
+  password: string;
+  isAdmin?: boolean;
+}
 
 export const useAuth = () => {
   const router = useRouter();
@@ -34,7 +40,14 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string, isAdmin: boolean = false) => {
     try {
-      const response = await authService.login({ email, password }, isAdmin);
+      // Tạo object params để truyền vào hàm login
+      const loginParams: LoginParams = {
+        email,
+        password,
+        isAdmin
+      };
+      
+      const response = await authService.login(loginParams);
       const profile = await authService.getProfile();
       setUser(profile);
       return response;

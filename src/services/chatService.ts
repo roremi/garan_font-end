@@ -1,12 +1,20 @@
 // services/chatService.ts
+
 const API_BASE_URL = 'http://localhost:5000/api';
+
+export enum ChatRoomStatus {
+  Pending = 0,
+  Success = 1,
+  Closed = 2
+}
 
 export interface ChatRoom {
   id: number;
   name: string;
   departmentName: string;
   createdAt: string;
-}
+  status: ChatRoomStatus;
+} 
 
 export interface ChatMessage {
   id: number;
@@ -37,7 +45,34 @@ export const chatService = {
     }
     return response.json();
   },
-
+  //lấy danh sách phòng theo trạng thái 
+  async getRoomsByStatus(status: ChatRoomStatus): Promise<ChatRoom[]> {
+    const response = await fetch(`${API_BASE_URL}/chat/rooms/status/${status}`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch rooms by status');
+    }
+    return response.json();
+  },
+  // Cập nhật trạng thái phòng
+  updateRoomStatus: async (roomId: number, status: ChatRoomStatus) => {
+    const response = await fetch(`${API_BASE_URL}/chat/rooms/${roomId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ status })
+      
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update room status');
+    }
+    return response.json();
+  },
   // Tạo phòng mới
   async createRoom(room: Partial<ChatRoom>): Promise<ChatRoom> {
     const response = await fetch(`${API_BASE_URL}/chat/rooms`, {
@@ -64,6 +99,7 @@ export const chatService = {
     if (!response.ok) {
       throw new Error('Failed to fetch messages');
     }
+    
     return response.json();
   }
 };

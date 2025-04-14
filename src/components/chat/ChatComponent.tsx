@@ -21,7 +21,7 @@ export default function ChatComponent() {
   if (!mounted || isLoading || !isAuthenticated || !user) return null;
   
   // Kiểm tra role của người dùng để hiển thị chat box phù hợp
-  const isAdmin = user.role === 0 || user.role === 1;
+  const isAdmin = user.role === 0 || user.role === 2;
   
   return isAdmin ? <AdminChatBox /> : <ChatBox />;
 }

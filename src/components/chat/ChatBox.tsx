@@ -2,11 +2,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSignalR } from '@/hooks/useSignalR';
-import { chatService } from '@/services/chatService';
+import { chatService, ChatRoomStatus } from '@/services/chatService';
 import ChatBubble from './ChatBubble';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, AlertCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ChatBox() {
   const { user } = useAuth();
@@ -15,6 +25,7 @@ export default function ChatBox() {
   const [roomId, setRoomId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const [showClosedRoomDialog, setShowClosedRoomDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const {
@@ -26,44 +37,59 @@ export default function ChatBox() {
     setInitialMessages
   } = useSignalR(user?.id || 0, user?.fullName || 'Khách');
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize chat when opened
+  const createNewRoom = async () => {
+    if (!user) return;
+    
+    setInitializing(true);
+    try {
+      const newRoom = await chatService.createRoom({
+        name: user.fullName,
+        departmentName: 'Hỗ trợ khách hàng'
+      });
+      
+      setRoomId(newRoom.id);
+      setInitialMessages([]);
+      await joinRoom(newRoom.id);
+      setShowClosedRoomDialog(false);
+    } catch (err) {
+      console.error('Error creating new room:', err);
+    } finally {
+      setInitializing(false);
+    }
+  };
+
   const initializeChat = async () => {
     if (!user) return;
     
     setInitializing(true);
     try {
-      // Kiểm tra xem người dùng đã có phòng chat chưa
       const rooms = await chatService.getRooms();
-      const userRoom = rooms.find(room => room.name === user.fullName);
+      // Tìm phòng chat mới nhất của người dùng
+      const userRooms = rooms
+        .filter(room => room.name === user.fullName)
+        .sort((a, b) => b.id - a.id); // Sắp xếp theo ID giảm dần
       
-      let currentRoomId: number;
+      const latestRoom = userRooms[0];
       
-      if (userRoom) {
-        // Nếu đã có phòng
-        currentRoomId = userRoom.id;
+      if (latestRoom) {
+        // Kiểm tra trạng thái phòng
+        if (latestRoom.status === ChatRoomStatus.Closed) {
+          setShowClosedRoomDialog(true);
+          return;
+        }
+        
+        setRoomId(latestRoom.id);
+        const chatMessages = await chatService.getMessages(latestRoom.id);
+        setInitialMessages(chatMessages);
+        await joinRoom(latestRoom.id);
       } else {
-        // Nếu chưa có phòng, tạo phòng mới
-        const newRoom = await chatService.createRoom({
-          name: user.fullName,
-          departmentName: 'Hỗ trợ khách hàng'
-        });
-        currentRoomId = newRoom.id;
+        // Nếu chưa có phòng nào, tạo phòng mới
+        await createNewRoom();
       }
-      
-      // Lưu roomId
-      setRoomId(currentRoomId);
-      
-      // Lấy tin nhắn của phòng
-      const chatMessages = await chatService.getMessages(currentRoomId);
-      setInitialMessages(chatMessages);
-      
-      // Tham gia phòng chat qua SignalR
-      await joinRoom(currentRoomId);
     } catch (err) {
       console.error('Error initializing chat:', err);
     } finally {
@@ -75,6 +101,18 @@ export default function ChatBox() {
     setIsOpen(true);
     if (!roomId) {
       await initializeChat();
+    } else {
+      // Kiểm tra trạng thái phòng hiện tại khi mở lại chat
+      try {
+        const currentRoom = await chatService.getRooms()
+          .then(rooms => rooms.find(r => r.id === roomId));
+        
+        if (currentRoom?.status === ChatRoomStatus.Closed) {
+          setShowClosedRoomDialog(true);
+        }
+      } catch (err) {
+        console.error('Error checking room status:', err);
+      }
     }
   };
 
@@ -87,6 +125,14 @@ export default function ChatBox() {
     
     setLoading(true);
     try {
+      const room = await chatService.getRooms()
+        .then(rooms => rooms.find(r => r.id === roomId));
+      
+      if (room?.status === ChatRoomStatus.Closed) {
+        setShowClosedRoomDialog(true);
+        return;
+      }
+      
       await sendMessage(roomId, message.trim());
       setMessage('');
     } catch (err) {
@@ -96,7 +142,6 @@ export default function ChatBox() {
     }
   };
 
-  // Xử lý khi nhấn Enter để gửi tin nhắn
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -106,26 +151,52 @@ export default function ChatBox() {
 
   return (
     <>
-      {/* Chat Button */}
+      <AlertDialog open={showClosedRoomDialog} onOpenChange={setShowClosedRoomDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Phòng chat đã được đóng</AlertDialogTitle>
+            <AlertDialogDescription>
+              Phòng chat này đã kết thúc. Bạn có muốn tạo cuộc trò chuyện mới không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowClosedRoomDialog(false);
+              setIsOpen(false);
+            }}>
+              Không
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={createNewRoom}>
+              Tạo cuộc trò chuyện mới
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-colors z-50"
+          className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-colors z-50 flex items-center gap-2"
           aria-label="Open chat"
         >
           <MessageCircle size={24} />
+          <span className="hidden sm:inline">Chat với chúng tôi</span>
         </button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-80 sm:w-96 bg-white rounded-lg shadow-xl flex flex-col z-50 border border-gray-200 max-h-[500px]">
+        <div className="fixed bottom-6 right-6 w-[400px] md:w-[450px] lg:w-[500px] bg-white rounded-lg shadow-xl flex flex-col z-50 border border-gray-200">
           {/* Header */}
-          <div className="bg-blue-600 text-white px-4 py-3 rounded-t-lg flex justify-between items-center">
-            <h3 className="font-medium">Hỗ trợ khách hàng</h3>
+          <div className="bg-blue-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+            <div>
+              <h3 className="font-medium text-lg">Hỗ trợ khách hàng</h3>
+              <p className="text-sm text-blue-100">
+                {connected ? 'Đang kết nối' : 'Đang kết nối...'}
+              </p>
+            </div>
             <button
               onClick={handleClose}
-              className="text-white hover:text-gray-200 transition-colors"
+              className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-blue-700 rounded-full"
               aria-label="Close chat"
             >
               <X size={20} />
@@ -133,26 +204,29 @@ export default function ChatBox() {
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col-reverse">
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-50 min-h-[400px] max-h-[600px] flex flex-col-reverse">
             {initializing ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                <span className="ml-2 text-gray-500">Đang tải...</span>
+                <span className="ml-3 text-gray-600">Đang khởi tạo chat...</span>
               </div>
             ) : error ? (
-              <div className="text-center text-red-500 py-4">
-                {error}
+              <div className="text-center text-red-500 py-6 flex flex-col items-center">
+                <AlertCircle className="h-12 w-12 mb-3" />
+                <p className="mb-3">{error}</p>
                 <Button 
                   variant="outline" 
                   className="mt-2"
                   onClick={initializeChat}
                 >
-                  Thử lại
+                  Thử kết nối lại
                 </Button>
               </div>
             ) : messages.length === 0 ? (
-              <div className="text-center text-gray-500 py-4">
-                Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
+              <div className="text-center text-gray-500 py-6">
+                <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                <p className="text-lg">Chào mừng bạn!</p>
+                <p className="text-sm">Hãy bắt đầu cuộc trò chuyện với chúng tôi.</p>
               </div>
             ) : (
               <>
@@ -165,31 +239,32 @@ export default function ChatBox() {
           </div>
 
           {/* Input Area */}
-          <div className="p-3 border-t border-gray-200">
-            <div className="flex items-end gap-2">
+          <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
+            <div className="flex items-end gap-3">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Nhập tin nhắn..."
-                className="flex-1 resize-none min-h-[60px] max-h-[120px]"
+                placeholder="Nhập tin nhắn của bạn..."
+                className="flex-1 resize-none min-h-[60px] max-h-[120px] focus:ring-blue-500"
                 disabled={loading || !connected || initializing}
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={!message.trim() || loading || !connected || initializing}
-                className="h-10 w-10 p-0"
+                className="h-10 w-10 p-0 bg-blue-600 hover:bg-blue-700"
               >
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 )}
               </Button>
             </div>
             {!connected && !error && (
-              <div className="text-xs text-amber-500 mt-1">
-                Đang kết nối...
+              <div className="flex items-center gap-2 text-sm text-amber-500 mt-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Đang kết nối với máy chủ...</span>
               </div>
             )}
           </div>
