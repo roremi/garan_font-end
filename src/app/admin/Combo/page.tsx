@@ -16,10 +16,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { api } from '@/services/api';
 
 import { Combo, ComboProduct } from '@/types/combo';
-
+import { ComboCategory } from '@/types/ComboCategory';
 
 export default function CombosPage() {
   const [combos, setCombos] = useState<Combo[]>([]);
+  const [categories, setCategories] = useState<ComboCategory[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -27,6 +28,7 @@ export default function CombosPage() {
 
   useEffect(() => {
     loadCombos();
+    loadCategories();
   }, []);
 
   const loadCombos = async () => {
@@ -42,9 +44,26 @@ export default function CombosPage() {
     }
   };
 
- // Trong pages/combos.tsx, cập nhật hàm handleAddCombo và handleEditCombo
+  const loadCategories = async () => {
+    try {
+      const data = await api.getComboCategories();
+      setCategories(data);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách danh mục combo",
+        variant: "destructive",
+      });
+    }
+  };
 
-const handleAddCombo = async (comboData: Partial<Combo>, selectedProducts: ComboProduct[]) => {
+  const getCategoryName = (categoryId?: number) => {
+    if (!categoryId) return "Không có danh mục";
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : "Không tìm thấy";
+  };
+
+  const handleAddCombo = async (comboData: Partial<Combo>, selectedProducts: ComboProduct[]) => {
     try {
       // Thêm combo mới
       const newCombo = await api.addCombo(comboData as Omit<Combo, 'id'>);
@@ -81,7 +100,8 @@ const handleAddCombo = async (comboData: Partial<Combo>, selectedProducts: Combo
         description: comboData.description,
         price: comboData.price,
         imageUrl: comboData.imageUrl,
-        isAvailable: comboData.isAvailable
+        isAvailable: comboData.isAvailable,
+        categoryId: comboData.categoryId
       };
   
       await api.updateCombo(selectedCombo.id, updatedCombo as Combo);
@@ -119,8 +139,6 @@ const handleAddCombo = async (comboData: Partial<Combo>, selectedProducts: Combo
     }
   };
   
-  
-
   const handleDeleteCombo = async (id: number) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa combo này?')) {
       try {
@@ -168,6 +186,7 @@ const handleAddCombo = async (comboData: Partial<Combo>, selectedProducts: Combo
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Tên Combo</TableHead>
+              <TableHead>Danh mục</TableHead>
               <TableHead>Mô tả</TableHead>
               <TableHead>Giá</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -179,6 +198,7 @@ const handleAddCombo = async (comboData: Partial<Combo>, selectedProducts: Combo
               <TableRow key={combo.id}>
                 <TableCell>{combo.id}</TableCell>
                 <TableCell>{combo.name}</TableCell>
+                <TableCell>{getCategoryName(combo.categoryId)}</TableCell>
                 <TableCell>{combo.description}</TableCell>
                 <TableCell>{combo.price.toLocaleString()}đ</TableCell>
                 <TableCell>

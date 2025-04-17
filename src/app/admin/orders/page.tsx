@@ -1,8 +1,7 @@
-// app/admin/orders/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Filter } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -21,31 +20,7 @@ import {
 } from "@/components/ui/select";
 import { api } from '@/services/api';
 import { useToast } from "@/components/ui/use-toast";
-
-// Định nghĩa interface
-interface OrderDetail {
-  id: number;
-  price: number;
-  quantity: number;
-  createAt: string;
-  name: string;
-  description: string;
-  imageUrl: string;
-}
-
-interface Order {
-  id: number;
-  idUser: number;
-  email: string;
-  status: number;
-  note: string;
-  total: number;
-  createAt: string;
-  nameCustomer: string;
-  address: string;
-  paymentMethod: string;
-  details?: OrderDetail[];
-}
+import type { OrderResponse, OrderDetailResponse } from '@/types/order';
 
 const statusColors = {
   0: 'bg-yellow-100 text-yellow-800',
@@ -62,24 +37,24 @@ const statusNames = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('all');
-  const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [viewOrder, setViewOrder] = useState<OrderResponse & { details?: OrderDetailResponse[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const { toast } = useToast();
 
-  // Fetch orders
   useEffect(() => {
     fetchOrders();
   }, []);
-  // const calculateTotal = (details: OrderDetail[]) => {
-  //   return details.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  // };
+
   const fetchOrders = async () => {
     try {
-      const data = await api.getAllOrders();
-      setOrders(data);
+      const response = await api.getAllOrders();
+      if (response.status === 200) {
+        setOrders(response.data);
+      }
       setLoading(false);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -88,34 +63,47 @@ export default function OrdersPage() {
         title: "Lỗi",
         description: "Không thể tải danh sách đơn hàng",
       });
+      setLoading(false);
     }
   };
 
-  // Fetch order details when viewing an order
-  const handleViewOrder = async (order: Order) => {
+  const handleViewOrder = async (order: OrderResponse) => {
     try {
-      const details = await api.getOrderDetails(order.id);
-      setViewOrder({ ...order, details });
-    } catch (error) {
+      setViewOrder({ ...order, details: [] }); // Hiển thị modal trước với dữ liệu rỗng
+      setLoadingDetails(true);
+      
+      const response = await api.getOrderDetails(order.id);
+      
+      console.log('Order details response:', response); // Log để debug
+      
+      if (response.status === 200) {
+        setViewOrder(prev => prev ? { ...prev, details: response.data } : null);
+      } else {
+        throw new Error('Failed to fetch order details');
+      }
+    } catch (error: any) {
       console.error('Error fetching order details:', error);
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể tải chi tiết đơn hàng",
+        title: "Lỗi khi tải chi tiết đơn hàng",
+        description: error.message || "Không thể tải chi tiết đơn hàng",
       });
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
-  // Handle order status update
   const handleUpdateStatus = async (orderId: number, newStatus: number) => {
     try {
-      await api.confirmOrder(orderId, newStatus);
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật trạng thái đơn hàng",
-      });
-      fetchOrders(); // Refresh orders list
-      setViewOrder(null); // Close modal
+      const response = await api.confirmOrder(orderId, newStatus);
+      if (response.status === 200) {
+        toast({
+          title: "Thành công",
+          description: "Đã cập nhật trạng thái đơn hàng",
+        });
+        fetchOrders();
+        setViewOrder(null);
+      }
     } catch (error) {
       console.error('Error updating order status:', error);
       toast({
@@ -126,7 +114,6 @@ export default function OrdersPage() {
     }
   };
 
-  // Filter orders
   const filteredOrders = orders.filter(order => {
     if (selectedStatus !== 'all' && order.status !== parseInt(selectedStatus)) return false;
     
@@ -137,11 +124,9 @@ export default function OrdersPage() {
 
       switch (selectedDate) {
         case 'today':
-          // Lọc đơn hàng trong ngày hôm nay
           return orderDate.toDateString() === today.toDateString();
           
         case 'week':
-          // Lọc đơn hàng trong tuần này (từ Chủ nhật đến Thứ 7)
           const firstDayOfWeek = new Date(today);
           firstDayOfWeek.setDate(today.getDate() - today.getDay());
           firstDayOfWeek.setHours(0, 0, 0, 0);
@@ -153,7 +138,6 @@ export default function OrdersPage() {
           return orderDate >= firstDayOfWeek && orderDate <= lastDayOfWeek;
           
         case 'month':
-          // Lọc đơn hàng trong tháng này
           const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
           const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
           lastDayOfMonth.setHours(23, 59, 59, 999);
@@ -184,16 +168,16 @@ export default function OrdersPage() {
           </Select>
 
           <Select value={selectedDate} onValueChange={setSelectedDate}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Thời gian" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả</SelectItem>
-          <SelectItem value="today">Hôm nay</SelectItem>
-          <SelectItem value="week">Tuần này</SelectItem>
-          <SelectItem value="month">Tháng này</SelectItem>
-        </SelectContent>
-      </Select>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Thời gian" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="today">Hôm nay</SelectItem>
+              <SelectItem value="week">Tuần này</SelectItem>
+              <SelectItem value="month">Tháng này</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -202,10 +186,10 @@ export default function OrdersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Mã đơn</TableHead>
-              <TableHead>Khách hàng</TableHead>
+              <TableHead>Khách hàng</TableHead>
               <TableHead>Ngày đặt</TableHead>
               <TableHead>Tổng tiền</TableHead>
-              <TableHead>Thanh toán</TableHead>
+              <TableHead>Thanh toán</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Thao tác</TableHead>
@@ -214,13 +198,13 @@ export default function OrdersPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredOrders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   Không có đơn hàng nào
                 </TableCell>
               </TableRow>
@@ -264,64 +248,138 @@ export default function OrdersPage() {
       {/* Order Detail Modal */}
       {viewOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Chi tiết đơn hàng #{viewOrder.id}</h2>
-            
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Chi tiết đơn hàng #{viewOrder.id}</h2>
+              <Button variant="outline" size="sm" onClick={() => setViewOrder(null)}>
+                ✕
+              </Button>
+            </div>
+
+            {/* Thông tin khách hàng */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <p className="text-sm text-gray-600">Khách hàng</p>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Khách hàng</p>
                 <p className="font-medium">{viewOrder.nameCustomer}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Ngày đặt</p>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Số điện thoại</p>
+                <p className="font-medium">{viewOrder.phone}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium">{viewOrder.email}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Ngày đặt</p>
                 <p className="font-medium">
-                  {new Date(viewOrder.createAt).toLocaleDateString('vi-VN')}
+                  {new Date(viewOrder.createAt).toLocaleString('vi-VN')}
                 </p>
               </div>
-              <div className="col-span-2">
-                <p className="text-sm text-gray-600">Ghi chú</p>
-                <p className="font-medium">{viewOrder.note || 'Không có ghi chú'}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-sm text-gray-600">Địa chỉ</p>
+              <div className="col-span-2 space-y-1">
+                <p className="text-sm text-gray-500">Địa chỉ</p>
                 <p className="font-medium">{viewOrder.address}</p>
               </div>
+              <div className="col-span-2 space-y-1">
+                <p className="text-sm text-gray-500">Ghi chú</p>
+                <p className="font-medium">{viewOrder.note || "Không có ghi chú"}</p>
+              </div>
             </div>
 
-            <div className="border rounded-lg p-4 mb-6">
-              <h3 className="font-medium mb-3">Các món đã đặt</h3>
-              {viewOrder.details?.map((item) => (
-                <div key={item.id} className="flex justify-between py-2 border-b last:border-0">
-                  <div className="flex items-center gap-4">
-                    {item.imageUrl && (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                    )}
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {item.price.toLocaleString('vi-VN')}đ x {item.quantity}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-medium">
-                    {(item.price * item.quantity).toLocaleString('vi-VN')}đ
-                  </span>
-                </div>
-              ))}
+            {/* Danh sách sản phẩm */}
+            <div className="border rounded-lg overflow-hidden mb-6">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Sản phẩm</th>
+                    <th className="px-4 py-2 text-right">Đơn giá</th>
+                    <th className="px-4 py-2 text-right">Số lượng</th>
+                    <th className="px-4 py-2 text-right">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {loadingDetails ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-center">
+                        Đang tải chi tiết đơn hàng...
+                      </td>
+                    </tr>
+                  ) : viewOrder.details && viewOrder.details.length > 0 ? (
+                    viewOrder.details.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={item.imageUrl || '/placeholder-image.jpg'} 
+                              alt={item.name}
+                              className="w-12 h-12 object-cover rounded"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                              }}
+                            />
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {item.type === 'product' ? 'Sản phẩm' : 'Combo'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {item.price.toLocaleString('vi-VN')}đ
+                        </td>
+                        <td className="px-4 py-3 text-right">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-center">
+                        Không có dữ liệu chi tiết đơn hàng
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-        <span className="font-medium">Tổng tiền</span>
-        <span className="text-xl font-bold text-orange-600">
-          {viewOrder.total.toLocaleString('vi-VN')}đ
-        </span>
-      </div>
+            {/* Tổng cộng và trạng thái */}
+<div className="flex justify-between items-center mb-6">
+  <div>
+    <p className="text-sm text-gray-500 mb-1">Trạng thái đơn hàng</p>
+    <span className={`px-3 py-1 rounded-full text-sm ${
+      statusColors[viewOrder.status as keyof typeof statusColors]
+    }`}>
+      {statusNames[viewOrder.status as keyof typeof statusNames]}
+    </span>
+  </div>
+  <div className="text-right space-y-1">
+    <div className="flex justify-between gap-8">
+      <p className="text-sm text-gray-500">Tạm tính:</p>
+      <p className="font-medium">
+        {(viewOrder.total - (viewOrder.shippingFee || 0)).toLocaleString('vi-VN')}đ
+      </p>
+    </div>
+    <div className="flex justify-between gap-8">
+      <p className="text-sm text-gray-500">Phí vận chuyển:</p>
+      <p className="font-medium">
+        {(viewOrder.shippingFee || 0).toLocaleString('vi-VN')}đ
+      </p>
+    </div>
+    <div className="flex justify-between gap-8 border-t pt-2 mt-2">
+      <p className="text-sm text-gray-700">Tổng tiền:</p>
+      <p className="text-xl font-bold text-orange-600">
+        {viewOrder.total.toLocaleString('vi-VN')}đ
+      </p>
+    </div>
+  </div>
+</div>
 
-            <div className="flex justify-end gap-4">
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setViewOrder(null)}

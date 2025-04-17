@@ -8,7 +8,6 @@ export interface RegisterData {
   password: string;
   fullName: string;
   phoneNumber: string;
-  address: string;
   username: string;
 }
 
@@ -50,7 +49,6 @@ export interface UserProfile {
   email: string;
   fullName: string;
   phoneNumber: string;
-  address: string;
   role: string | number;
   avatar?: string;
   is2FAEnabled?: boolean;

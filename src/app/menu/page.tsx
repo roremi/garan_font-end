@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import Header from '@/components/layout/Header';
@@ -9,9 +9,93 @@ import { Product } from '@/types/product';
 import { Category } from '@/types/Category';
 import Image from 'next/image';
 import { useToast } from "@/components/ui/use-toast";
-import { useCart } from '@/contexts/CartContext'; // Thay đổi import từ contexts
-import Link from 'next/link';
+import { useCart } from '@/contexts/CartContext';
 import { useRouter } from 'next/navigation';
+
+// Components
+const ProductSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="h-48 bg-gray-200 rounded-lg"></div>
+    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    <div className="flex gap-2">
+      <div className="h-10 bg-gray-200 rounded flex-1"></div>
+      <div className="h-10 bg-gray-200 rounded flex-1"></div>
+    </div>
+  </div>
+);
+
+interface ProductCardProps {
+  product: Product;
+  onAddToCart: (product: Product) => void;
+  onNavigate: (id: number) => void;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onNavigate }) => (
+  <div className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all">
+    <div 
+      className="cursor-pointer"
+      onClick={() => onNavigate(product.id)}
+    >
+      <div className="h-48 bg-gray-100 relative overflow-hidden">
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+            Hình ảnh không có sẵn
+          </div>
+        )}
+        {!product.isAvailable && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <span className="text-white font-bold">Hết hàng</span>
+          </div>
+        )}
+      </div>
+    </div>
+    <div className="p-4">
+      <h3 
+        className="font-bold mb-2 hover:text-orange-600 transition-colors cursor-pointer"
+        onClick={() => onNavigate(product.id)}
+      >
+        {product.name}
+      </h3>
+      <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+        {product.description}
+      </p>
+      <p className="text-orange-600 font-bold mb-4">
+        {new Intl.NumberFormat('vi-VN', {
+          style: 'currency',
+          currency: 'VND'
+        }).format(product.price)}
+      </p>
+      <div className="flex gap-2">
+        <Button 
+          className="flex-1"
+          variant="outline"
+          onClick={() => onNavigate(product.id)}
+        >
+          Chi tiết
+        </Button>
+        <Button 
+          className="flex-1"
+          disabled={!product.isAvailable}
+          onClick={(e) => {
+            e.stopPropagation();
+            product.isAvailable && onAddToCart(product);
+          }}
+        >
+          {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}
+        </Button>
+      </div>
+    </div>
+  </div>
+);
 
 export default function MenuPage() {
   const router = useRouter();
@@ -49,12 +133,14 @@ export default function MenuPage() {
     fetchData();
   }, [toast]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === "Tất cả" || 
-      categories.find(cat => cat.id === product.categoryId)?.name === selectedCategory;
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesCategory = selectedCategory === "Tất cả" || 
+        categories.find(cat => cat.id === product.categoryId)?.name === selectedCategory;
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, categories, selectedCategory, searchQuery]);
 
   const handleAddToCart = (product: Product) => {
     if (!product.isAvailable) {
@@ -66,14 +152,7 @@ export default function MenuPage() {
       return;
     }
   
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      quantity: 1,
-      type: 'product'
-    });
+    addToCart("Product", product.id, 1);
   
     toast({
       title: "Thêm vào giỏ hàng thành công",
@@ -91,18 +170,10 @@ export default function MenuPage() {
         <Header />
         <main className="pt-16">
           <div className="container mx-auto px-4 py-12">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-lg shadow-md p-4">
-                    <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))}
             </div>
           </div>
         </main>
@@ -159,72 +230,12 @@ export default function MenuPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              <div 
+              <ProductCard
                 key={product.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-all"
-              >
-                <div 
-                  className="cursor-pointer"
-                  onClick={() => handleNavigateToProduct(product.id)}
-                >
-                  <div className="h-48 bg-gray-100 relative overflow-hidden">
-                    {product.imageUrl ? (
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                        Hình ảnh không có sẵn
-                      </div>
-                    )}
-                    {!product.isAvailable && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <span className="text-white font-bold">Hết hàng</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 
-                    className="font-bold mb-2 hover:text-orange-600 transition-colors cursor-pointer"
-                    onClick={() => handleNavigateToProduct(product.id)}
-                  >
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                    {product.description}
-                  </p>
-                  <p className="text-orange-600 font-bold mb-4">
-                    {new Intl.NumberFormat('vi-VN', {
-                      style: 'currency',
-                      currency: 'VND'
-                    }).format(product.price)}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button 
-                      className="flex-1"
-                      variant="outline"
-                      onClick={() => handleNavigateToProduct(product.id)}
-                    >
-                      Chi tiết
-                    </Button>
-                    <Button 
-                      className="flex-1"
-                      disabled={!product.isAvailable}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        product.isAvailable && handleAddToCart(product);
-                      }}
-                    >
-                      {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                product={product}
+                onAddToCart={handleAddToCart}
+                onNavigate={handleNavigateToProduct}
+              />
             ))}
           </div>
         </div>

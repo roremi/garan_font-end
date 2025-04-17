@@ -8,7 +8,7 @@ import Footer from '@/components/layout/Footer';
 import { api } from '@/services/api';
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
-import {authService} from '@/services/auth.service'
+import { authService } from '@/services/auth.service';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Eye, Calendar, Box, DollarSign } from "lucide-react";
+import { Package, Eye, Calendar, Box, DollarSign, Truck } from "lucide-react";
 import { Order } from '@/types/order';
 
 interface OrderStatus {
@@ -53,7 +53,7 @@ const ORDER_STATUS: OrderStatusMap = {
     color: 'primary'
   },
   3: {
-    label: 'Đã hủy',
+    label: 'Đã hủy',
     color: 'danger'
   }
 };
@@ -64,15 +64,16 @@ export default function OrderHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
-    // if (!isAuthenticated || !user) {
-    //   router.push('/auth/login');
-    // }
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+    }
   }, [isAuthenticated, router]);
 
-
-  
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchOrders();
@@ -80,15 +81,14 @@ export default function OrderHistory() {
   }, [isAuthenticated, user]);
 
   const fetchOrders = async () => {
-      if (!isAuthenticated || !user) {  // Check both isAuthenticated and user
-        return; // Don't fetch if not authenticated or user is null
-      }
+    if (!isAuthenticated || !user) {
+      return;
+    }
     try {
+      setLoading(true);
       const userResponse = await authService.getUserByEmail(user.email);
       const userId = userResponse.id;
-      // const orderCode = generateOrderCode();
-      setLoading(true);
-      const data = await api.getOrdersbyUser(userId); // Sử dụng userId của người dùng đăng nhập
+      const data = await api.getOrdersbyUser(userId);
       setOrders(data);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -103,7 +103,7 @@ export default function OrderHistory() {
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'dd/MM/yyyy');
+    return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
   };
 
   const formatCurrency = (amount: number) => {
@@ -121,14 +121,20 @@ export default function OrderHistory() {
     return orders.filter(order => order.status === 2).length;
   };
 
-  const [viewOrder, setViewOrder] = useState<Order | null>(null);
-  const [orderDetails, setOrderDetails] = useState<any[]>([]);
+  const getPendingOrdersCount = () => {
+    return orders.filter(order => order.status === 0).length;
+  };
 
   const handleViewOrder = async (order: Order) => {
     try {
-      const details = await api.getOrderDetails(order.id);
-      setOrderDetails(details);
+      setLoadingDetails(true);
       setViewOrder(order);
+      const response = await api.getOrderDetails(order.id);
+      if (response.status === 200) {
+        setOrderDetails(response.data);
+      } else {
+        throw new Error("Failed to fetch order details");
+      }
     } catch (error) {
       console.error('Error fetching order details:', error);
       toast({
@@ -136,6 +142,8 @@ export default function OrderHistory() {
         title: "Lỗi",
         description: "Không thể tải chi tiết đơn hàng",
       });
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -159,7 +167,7 @@ export default function OrderHistory() {
   };
 
   if (!isAuthenticated) {
-    return null; // hoặc hiển thị một loading spinner
+    return null;
   }
 
   if (loading) {
@@ -198,7 +206,7 @@ export default function OrderHistory() {
           </nav>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -210,6 +218,19 @@ export default function OrderHistory() {
                 </div>
               </CardContent>
             </Card>
+            
+            <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium opacity-80">Đơn chờ xác nhận</p>
+                    <h3 className="text-2xl font-bold mt-2">{getPendingOrdersCount()}</h3>
+                  </div>
+                  <Truck className="h-8 w-8 opacity-80" />
+                </div>
+              </CardContent>
+            </Card>
+            
             <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -221,6 +242,7 @@ export default function OrderHistory() {
                 </div>
               </CardContent>
             </Card>
+            
             <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -304,70 +326,146 @@ export default function OrderHistory() {
         </div>
       </main>
       <Footer />
+      
+      {/* Order Detail Modal */}
       {viewOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Chi tiết đơn hàng #{viewOrder.id}</h2>
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Chi tiết đơn hàng #{viewOrder.id}</h2>
+              <Button variant="outline" size="sm" onClick={() => setViewOrder(null)}>
+                ✕
+              </Button>
+            </div>
+
+            {/* Thông tin khách hàng */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <p className="text-sm text-gray-600">Ngày đặt</p>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Khách hàng</p>
+                <p className="font-medium">{viewOrder.nameCustomer}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Số điện thoại</p>
+                <p className="font-medium">{viewOrder.phone}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium">{viewOrder.email}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Ngày đặt</p>
                 <p className="font-medium">
                   {formatDate(viewOrder.createAt)}
                 </p>
               </div>
-              <div className="col-span-2">
-                <p className="text-sm text-gray-600">Ghi chú</p>
-                <p className="font-medium">{viewOrder.note || 'Không có ghi chú'}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-sm text-gray-600">Địa chỉ</p>
+              <div className="col-span-2 space-y-1">
+                <p className="text-sm text-gray-500">Địa chỉ</p>
                 <p className="font-medium">{viewOrder.address}</p>
               </div>
+              <div className="col-span-2 space-y-1">
+                <p className="text-sm text-gray-500">Ghi chú</p>
+                <p className="font-medium">{viewOrder.note || "Không có ghi chú"}</p>
+              </div>
+              <div className="col-span-2 space-y-1">
+                <p className="text-sm text-gray-500">Phương thức thanh toán</p>
+                <p className="font-medium">{viewOrder.paymentMethod}</p>
+              </div>
             </div>
 
-            <div className="border rounded-lg p-4 mb-6">
-              <h3 className="font-medium mb-3">Các món đã đặt</h3>
-              
-              
-{orderDetails.map((item) => (
-  <div key={item.id} className="flex justify-between py-2 border-b last:border-0">
-    <div className="flex items-center gap-4">
-      {item.imageUrl && (
-        <img 
-          src={item.imageUrl} 
-          alt={item.name}
-          className="w-12 h-12 object-cover rounded"
-        />
-      )}
-      <div>
-        <div className="flex items-center gap-2">
-          <p className="font-medium">{item.name}</p>
-          <Badge variant="secondary" className="text-xs">
-            {item.type === 'combo' ? 'Combo' : 'Sản phẩm'}
-          </Badge>
-        </div>
-        <p className="text-sm text-gray-600">
-          {formatCurrency(item.price)} x {item.quantity}
-        </p>
-      </div>
-    </div>
-    <span className="font-medium">
-      {formatCurrency(item.price * item.quantity)}
-    </span>
-  </div>
-))}
-
-
+            {/* Danh sách sản phẩm */}
+            <div className="border rounded-lg overflow-hidden mb-6">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Sản phẩm</th>
+                    <th className="px-4 py-2 text-right">Đơn giá</th>
+                    <th className="px-4 py-2 text-right">Số lượng</th>
+                    <th className="px-4 py-2 text-right">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {loadingDetails ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-center">
+                        Đang tải chi tiết đơn hàng...
+                      </td>
+                    </tr>
+                  ) : orderDetails && orderDetails.length > 0 ? (
+                    orderDetails.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={item.imageUrl || '/placeholder-image.jpg'} 
+                              alt={item.name}
+                              className="w-12 h-12 object-cover rounded"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                              }}
+                            />
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {item.type === 'product' ? 'Sản phẩm' : 'Combo'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {formatCurrency(item.price)}
+                        </td>
+                        <td className="px-4 py-3 text-right">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {formatCurrency(item.price * item.quantity)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-center">
+                        Không có dữ liệu chi tiết đơn hàng
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
+            {/* Tổng cộng và trạng thái */}
             <div className="flex justify-between items-center mb-6">
-              <span className="font-medium">Tổng tiền</span>
-              <span className="text-xl font-bold text-orange-600">
-                {formatCurrency(viewOrder.total)}
-              </span>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Trạng thái đơn hàng</p>
+                <Badge 
+                  variant={ORDER_STATUS[viewOrder.status].color as any}
+                  className="px-3 py-1 text-sm"
+                >
+                  {ORDER_STATUS[viewOrder.status].label}
+                </Badge>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="flex justify-between gap-8">
+                  <p className="text-sm text-gray-500">Tạm tính:</p>
+                  <p className="font-medium">
+                    {formatCurrency((viewOrder.total || 0) - (viewOrder.shippingFee || 0))}
+                  </p>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <p className="text-sm text-gray-500">Phí vận chuyển:</p>
+                  <p className="font-medium">
+                    {formatCurrency(viewOrder.shippingFee || 0)}
+                  </p>
+                </div>
+                <div className="flex justify-between gap-8 border-t pt-2 mt-2">
+                  <p className="text-sm text-gray-700">Tổng tiền:</p>
+                  <p className="text-xl font-bold text-orange-600">
+                    {formatCurrency(viewOrder.total)}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-4">
+            {/* Buttons */}
+            <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setViewOrder(null)}

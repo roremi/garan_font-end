@@ -55,15 +55,8 @@ export default function HomePage() {
       });
       return;
     }
-  
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      quantity: 1,
-      type:'product'
-    });
+    addToCart("Product", product.id, 1);
+
   
     toast({
       title: "Thêm vào giỏ hàng thành công",

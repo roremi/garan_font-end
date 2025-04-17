@@ -4,9 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { Combo, ComboProduct } from "@/types/combo";
 import { Product } from "@/types/product";
+import { ComboCategory } from "@/types/ComboCategory";
 import { api } from "@/services/api";
 import { 
   Table,
@@ -35,10 +37,12 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
     description: '',
     price: 0,
     imageUrl: '',
-    isAvailable: true
+    isAvailable: true,
+    categoryId: undefined
   });
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<ComboCategory[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Map<number, ComboProduct>>(new Map());
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
@@ -60,26 +64,40 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
     setLoading(true);
     try {
       const productsData = await api.getProducts();
+      const categoriesData = await api.getComboCategories();
+      
       setProducts(productsData);
+      setCategories(categoriesData);
   
       if (mode === 'edit' && combo?.id) {
+        // Nếu combo có category, lấy thông tin chi tiết của combo để đảm bảo có categoryId
+        let comboDetail = combo;
+        if (combo.id) {
+          try {
+            comboDetail = await api.getComboById(combo.id);
+          } catch (error) {
+            console.error("Không thể lấy thông tin chi tiết combo:", error);
+          }
+        }
+
         setFormData({
-          id: combo.id,
-          name: combo.name || '',
-          description: combo.description || '',
-          price: combo.price || 0,
-          imageUrl: combo.imageUrl || '',
-          isAvailable: combo.isAvailable ?? true
+          id: comboDetail.id,
+          name: comboDetail.name || '',
+          description: comboDetail.description || '',
+          price: comboDetail.price || 0,
+          imageUrl: comboDetail.imageUrl || '',
+          isAvailable: comboDetail.isAvailable ?? true,
+          categoryId: comboDetail.categoryId || (comboDetail.category?.id) || undefined
         });
   
-        const comboProducts = await api.getComboProductsByComboId(combo.id);
+        const comboProducts = await api.getComboProductsByComboId(comboDetail.id);
         
         const productMap = new Map<number, ComboProduct>();
         
         comboProducts.forEach(cp => {
           productMap.set(cp.productId, {
             productId: cp.productId,
-            comboId: combo.id,
+            comboId: comboDetail.id,
             quantity: cp.quantity || 1,
             productName: cp.productName || productsData.find(p => p.id === cp.productId)?.name || ''
           });
@@ -92,7 +110,8 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
           description: '',
           price: 0,
           imageUrl: '',
-          isAvailable: true
+          isAvailable: true,
+          categoryId: undefined
         });
         setSelectedProducts(new Map());
       }
@@ -252,6 +271,27 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Danh mục</Label>
+                <Select
+                  value={formData.categoryId?.toString() || ""}
+                  onValueChange={(value) => 
+                    setFormData({ ...formData, categoryId: value ? parseInt(value) : undefined })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn danh mục" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id.toString()}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
