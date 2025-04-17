@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import Header from '@/components/layout/Header';
@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useToast } from "@/components/ui/use-toast";
 import { useCart } from '@/contexts/CartContext';
 import { Combo, ComboProduct } from '@/types/combo';
+import { ComboCategory } from '@/types/ComboCategory';
 import { api } from '@/services/api';
 import { Loader2 } from 'lucide-react';
 
@@ -15,7 +16,8 @@ export default function CombosPage() {
   const { toast } = useToast();
   const { addToCart } = useCart();
   const [combos, setCombos] = useState<Combo[]>([]);
-  const [comboProducts, setComboProducts] = useState<ComboProduct[]>([]);
+  const [categories, setCategories] = useState<ComboCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -23,11 +25,18 @@ export default function CombosPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await api.getCombos();
-        console.log('Combos data:', response); // Để debug
-        setCombos(response);
+        const [combosData, categoriesData] = await Promise.all([
+          api.getCombos(),
+          api.getComboCategories()
+        ]);
+        
+        console.log("Fetched combos:", combosData);
+        console.log("Fetched categories:", categoriesData);
+        
+        setCombos(combosData);
+        setCategories(categoriesData);
       } catch (error) {
-        console.error('Error fetching combos:', error);
+        console.error('Error fetching data:', error);
         toast({
           variant: "destructive",
           title: "Lỗi",
@@ -41,17 +50,35 @@ export default function CombosPage() {
     fetchData();
   }, [toast]);
 
-  // Lọc combo theo tên
-  const filteredCombos = combos.filter(combo =>
-    combo.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Lọc combo theo tên và danh mục
+  const filteredCombos = useMemo(() => {
+    return combos.filter(combo => {
+      // Kiểm tra xem combo có thông tin category không
+      const comboCategory = combo.category?.name || 
+                           (combo.categoryId ? categories.find(cat => cat.id === combo.categoryId)?.name : null);
+      
+      const matchesCategory = selectedCategory === "Tất cả" || comboCategory === selectedCategory;
+      const matchesSearch = combo.name.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      return matchesCategory && matchesSearch;
+    });
+  }, [combos, categories, selectedCategory, searchQuery]);
 
-  // Lấy sản phẩm của combo
-  const getComboProducts = (comboId: number) => {
-    return comboProducts.filter(cp => cp.comboId === comboId);
+  const getCategoryName = (combo: Combo) => {
+    // Lấy tên danh mục từ đối tượng category hoặc từ categoryId
+    if (combo.category?.name) {
+      return combo.category.name;
+    }
+    
+    if (combo.categoryId) {
+      const category = categories.find(cat => cat.id === combo.categoryId);
+      return category?.name || "Không tìm thấy";
+    }
+    
+    return "Không có danh mục";
   };
 
-  const handleAddToCart = (combo: Combo) => {
+  const handleAddToCart = async (combo: Combo) => {
     if (!combo.isAvailable) {
       toast({
         variant: "destructive",
@@ -61,19 +88,19 @@ export default function CombosPage() {
       return;
     }
   
-    addToCart({
-      id: combo.id,
-      name: combo.name,
-      price: combo.price,
-      imageUrl: combo.imageUrl,
-      quantity: 1,
-      type: 'combo'
-    });
-  
-    toast({
-      title: "Thêm vào giỏ hàng thành công",
-      description: `Đã thêm ${combo.name} vào giỏ hàng`,
-    });
+    try {
+      await addToCart('Combo', combo.id, 1);
+      toast({
+        title: "Thêm vào giỏ hàng thành công",
+        description: `Đã thêm ${combo.name} vào giỏ hàng`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.message || "Không thể thêm vào giỏ hàng",
+      });
+    }
   };
 
   if (loading) {
@@ -104,17 +131,44 @@ export default function CombosPage() {
           </div>
         </div>
 
-        {/* Search Section */}
+        {/* Debug info - Xóa sau khi debug xong
+        <div className="container mx-auto px-4 py-2 text-xs text-gray-500">
+          <p>Danh mục đã chọn: {selectedCategory}</p>
+          <p>Số lượng combo: {combos.length}</p>
+          <p>Số lượng combo đã lọc: {filteredCombos.length}</p>
+        </div> */}
+
+        {/* Categories and Search Section */}
         <div className="container mx-auto px-4 py-6">
-          <div className="relative w-full md:w-96 mx-auto">
-            <input
-              type="text"
-              placeholder="Tìm kiếm combo..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={selectedCategory === "Tất cả" ? "default" : "outline"}
+                onClick={() => setSelectedCategory("Tất cả")}
+              >
+                Tất cả
+              </Button>
+              {categories.map((category) => (
+                <Button
+                  key={category.id}
+                  variant={selectedCategory === category.name ? "default" : "outline"}
+                  onClick={() => setSelectedCategory(category.name)}
+                >
+                  {category.name}
+                </Button>
+              ))}
+            </div>
+
+            <div className="relative w-full md:w-64">
+              <input
+                type="text"
+                placeholder="Tìm kiếm combo..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+            </div>
           </div>
         </div>
 
@@ -130,6 +184,9 @@ export default function CombosPage() {
                     fill
                     className="object-cover"
                   />
+                  <span className="absolute top-2 left-2 bg-orange-600 text-white text-xs px-2 py-1 rounded-full">
+                    {getCategoryName(combo)}
+                  </span>
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-bold mb-2">{combo.name}</h3>
@@ -167,7 +224,29 @@ export default function CombosPage() {
             ))}
           </div>
         </div>
+
+        {/* No Results Message */}
+        {filteredCombos.length === 0 && (
+          <div className="container mx-auto px-4 py-12 text-center">
+            <div className="bg-white rounded-lg shadow-md p-8">
+              <h3 className="text-xl font-semibold text-gray-900">Không tìm thấy combo</h3>
+              <p className="mt-2 text-gray-600">
+                Không có combo nào phù hợp với tiêu chí tìm kiếm của bạn.
+              </p>
+              <Button
+                className="mt-4"
+                onClick={() => {
+                  setSelectedCategory("Tất cả");
+                  setSearchQuery("");
+                }}
+              >
+                Xóa bộ lọc
+              </Button>
+            </div>
+          </div>
+        )}
       </main>
+
       <Footer />
     </div>
   );

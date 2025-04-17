@@ -46,6 +46,11 @@ const menuItems = [
     path: '/admin/Category'
   },
   {
+    title: 'Quản lý danh mục Combo',
+    icon: FolderOpen,
+    path: '/admin/ComboCategory'
+  },
+  {
     title: 'Quản lý Combo',
     icon: FolderOpen,
     path: '/admin/Combo'
@@ -55,6 +60,11 @@ const menuItems = [
     icon: ShoppingBag,
     path: '/admin/orders',
     badge: '5' // Số đơn hàng mới
+  },
+  {
+    title: 'Quản lý voucher',
+    icon: ShoppingBag,
+    path: '/admin/Voucher',
   },
   {
     title: 'Quản lý người dùng',

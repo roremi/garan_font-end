@@ -9,7 +9,7 @@ export interface CartItem {
 }
 
 export interface OrderDetails {
-  fullName: string;
+  nameCustomer: string;
   phone: string;
   email: string;
   address: string;
@@ -27,4 +27,51 @@ export interface Order extends OrderDetails {
   orderDate: string;
   status: number;
   createAt: string;
+}
+
+
+export interface OrderCreateRequest {
+  nameCustomer: string;
+  phone: string;
+  email: string;
+  address: string;
+  note?: string;
+  paymentMethod: string;
+  cartItems: {
+    id: number;
+    quantity: number;
+    type: string;
+  }[];
+  shippingFee: number;
+  totalAmount: number;
+  // ✅ Thêm hai dòng mới:
+  idVoucherDiscount?: number;
+  idVoucherShipping?: number;
+}
+
+export interface OrderResponse {
+  id: number;
+  idUser: number;
+  nameCustomer: string;
+  phone: string;
+  email: string;
+  address: string;
+  note: string;
+  shippingFee : number;
+  paymentMethod: string;
+  createAt: string;
+  status: number;
+  total: number;
+  detailorders: OrderDetailResponse[];
+}
+
+export interface OrderDetailResponse {
+  id: number;
+  quantity: number;
+  price: number;
+  productId?: number;
+  comboId?: number;
+  name: string;
+  imageUrl: string;
+  type: 'product' | 'combo';
 }

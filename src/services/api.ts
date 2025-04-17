@@ -1,8 +1,13 @@
 import { Product } from "@/types/product";
 import { Category } from "@/types/Category";
+import { ComboCategory } from "@/types/ComboCategory";
+import {Cart, CartItem} from "@/types/cart"
+import { OrderCreateRequest, OrderResponse, OrderDetailResponse } from "@/types/order";
 import { ImageUploadResponse } from "@/types/image";
 import { Combo, ComboProduct } from '@/types/combo';
 import { Feedback } from "@/types/feedback";
+import {Voucher} from '@/types/voucher';
+
 
 const API_URL = "https://localhost:5001/api";
 const API_URL1 = "https://localhost:5000/api";
@@ -185,94 +190,254 @@ export const api = {
   },
   // order
   // Tạo order mới
-  async createOrder(orderData: any) {
-    const response = await fetch(`${API_URL}/Order/add`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(orderData),
+  async createOrder(orderData: OrderCreateRequest): Promise<{message: string, status: number, data: OrderResponse}> {
+    const response = await fetch(`${API_URL}/Order/create`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(orderData)
     });
-
-    const data = await response.json();
-    console.log("Create Order API Response:", data); // Log để kiểm tra
-
-    if (!data.status || data.status !== 200) {
-      throw new Error(data.message || "Failed to create order");
+  
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to create order');
     }
-    return data;
-  },
-
-  async createOrderDetail(detailData: any) {
-    const response = await fetch(`${API_URL}/DetailOrder/add`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(detailData),
-    });
-
-    const data = await response.json();
-    console.log("Create Detail API Response:", data); // Log để kiểm tra
-
-    if (!data.status || data.status !== 200) {
-      throw new Error(data.message || "Failed to create order detail");
-    }
-    return data;
+  
+    return response.json();
   },
   async getAllOrders() {
-    const response = await fetch(`${API_URL}/Order/all`);
-    const data = await response.json();
-
-    // console.log('Raw API response:', data); // Thêm dòng này
-
-    if (!data.status || data.status !== 200) {
-      throw new Error(data.message || "Failed to fetch orders");
+    try {
+      const response = await fetch(`${API_URL}/Order/all`, {
+        headers: getHeaders() // Thêm headers nếu cần
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const text = await response.text(); // Đọc response dưới dạng text trước
+  
+      // Kiểm tra xem response có rỗng không
+      if (!text) {
+        throw new Error('Empty response received');
+      }
+  
+      try {
+        const data = JSON.parse(text); // Parse text thành JSON
+        
+        if (!data.status || data.status !== 200) {
+          throw new Error(data.message || "Failed to fetch orders");
+        }
+  
+        return {
+          status: 200,
+          data: data.data || [] // Đảm bảo luôn trả về mảng, ngay cả khi rỗng
+        };
+  
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Response Text:', text);
+        throw new Error('Invalid JSON response');
+      }
+  
+    } catch (error) {
+      console.error('Error in getAllOrders:', error);
+      return {
+        status: 500,
+        data: []
+      };
     }
-
-    // console.log('Processed data:', data.data); // Thêm dòng này
-    return data.data;
   },
 
-  async getOrderDetails(orderId: number) {
-    const response = await fetch(
-      `${API_URL}/DetailOrder/getAllByOrder?idOrder=${orderId}`
-    );
-    const data = await response.json();
+async getOrderById(orderId: number): Promise<OrderResponse> {
+  const response = await fetch(`${API_URL}/Order/${orderId}`, {
+    headers: getHeaders()
+  });
 
-    if (!data.status || data.status !== 200) {
-      throw new Error(data.message || "Failed to fetch order details");
+  if (!response.ok) {
+    throw new Error('Failed to fetch order details');
+  }
+
+  return response.json();
+},
+
+
+  async getOrderDetails(orderId: number) {
+    try {
+      const response = await fetch(`${API_URL}/DetailOrder/getAllByOrder/${orderId}`, {
+        headers: getHeaders()
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+  
+      const text = await response.text();
+      
+      if (!text) {
+        return {
+          status: 200,
+          data: []
+        };
+      }
+  
+      try {
+        const data = JSON.parse(text);
+        
+        if (!data.status || data.status !== 200) {
+          throw new Error(data.message || "Failed to fetch order details");
+        }
+  
+        return {
+          status: 200,
+          data: data.data || []
+        };
+  
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Response Text:', text);
+        throw new Error('Invalid JSON response');
+      }
+  
+    } catch (error) {
+      console.error('Error in getOrderDetails:', error);
+      return {
+        status: 500,
+        data: []
+      };
     }
-    return data.data;
   },
 
   async getOrdersbyUser(userId: number) {
-    const response = await fetch(
-      `${API_URL}/Order/getAllOrder?idUser=${userId}`
-    );
-    const data = await response.json();
-
-    // console.log('Raw API response:', data); // Thêm dòng này
-
-    if (!data.status || data.status !== 200) {
-      throw new Error(data.message || "Failed to fetch orders");
+    try {
+      const response = await fetch(
+        `${API_URL}/Order/getAllOrder?idUser=${userId}`,
+        {
+          headers: getHeaders() // Thêm headers để đảm bảo xác thực
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      // Đọc response dưới dạng text trước để kiểm tra
+      const text = await response.text();
+      
+      // Kiểm tra xem response có rỗng không
+      if (!text) {
+        console.log('Empty response received from getOrdersbyUser');
+        return [];
+      }
+      
+      try {
+        // Parse text thành JSON
+        const data = JSON.parse(text);
+        
+        if (!data.status || data.status !== 200) {
+          throw new Error(data.message || "Failed to fetch orders");
+        }
+        
+        // Đảm bảo data.data tồn tại, nếu không thì trả về mảng rỗng
+        return data.data || [];
+        
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Response Text:', text);
+        throw new Error('Invalid JSON response from server');
+      }
+    } catch (error) {
+      console.error('Error in getOrdersbyUser:', error);
+      // Trả về mảng rỗng thay vì ném lỗi để tránh làm hỏng UI
+      return [];
     }
-
-    // console.log('Processed data:', data.data); // Thêm dòng này
-    return data.data;
   },
+  
 
   async confirmOrder(orderId: number, status: number) {
-    const response = await fetch(
-      `${API_URL}/Order/confirmOrder?idOrder=${orderId}&status=${status}`
-    );
-    const data = await response.json();
-
-    if (!data.status || data.status !== 200) {  
-      throw new Error(data.message || "Failed to confirm order");
+    try {
+      const response = await fetch(
+        `${API_URL}/Order/confirmOrder?idOrder=${orderId}&status=${status}`,
+        {
+          headers: getHeaders() // Thêm headers nếu cần
+        }
+      );
+      
+      // Đọc response dưới dạng text trước
+      const text = await response.text();
+      
+      // Kiểm tra xem response có rỗng không
+      if (!text) {
+        return {
+          status: response.status,
+          message: "No response data",
+          data: null
+        };
+      }
+      
+      // Parse text thành JSON
+      try {
+        const data = JSON.parse(text);
+        
+        if (!data.status || data.status !== 200) {
+          throw new Error(data.message || "Failed to confirm order");
+        }
+        
+        return data;
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Response Text:', text);
+        throw new Error('Invalid JSON response from server');
+      }
+    } catch (error) {
+      console.error('Error in confirmOrder:', error);
+      throw error;
     }
-    return data;
   },
+  // Thêm vào object api trong services/api.ts (thêm vào cuối trước dấu ngoặc nhọn đóng)
+
+// Lấy trạng thái đơn hàng
+async getOrderStatus(orderId: number): Promise<{status: string}> {
+  const response = await fetch(`${API_URL}/Order/${orderId}/status`, {
+    headers: getHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get order status');
+  }
+
+  return response.json();
+},
+
+// Hủy đơn hàng
+async cancelOrder(orderId: number): Promise<{message: string, status: number}> {
+  const response = await fetch(`${API_URL}/Order/${orderId}/cancel`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to cancel order');
+  }
+
+  return response.json();
+},
+
+
+//   // Thêm vào api object trong services/api.ts
+// async updateOrder(orderData: OrderCreateRequest): Promise<{message: string, status: number, data: OrderResponse}> {
+//   const response = await fetch(`${API_URL}/Order/update`, {
+//     method: 'PUT',
+//     headers: getHeaders(),
+//     body: JSON.stringify(orderData)
+//   });
+
+//   if (!response.ok) {
+//     const error = await response.text();
+//     throw new Error(error || 'Failed to update order');
+//   }
+
+//   return response.json();
+// },
   async checkTransaction(transactionData: {
     orderId: number;
     amount: number;
@@ -397,10 +562,116 @@ export const api = {
     return response.json();
   },
 
+  // Thêm phương thức này vào đối tượng api trong file services/api.ts
+getShippingFeeByAddress: async (
+  userId: number, 
+  addressId: number, 
+  subtotal?: number, 
+  idVoucherDiscount?: string, 
+  idVoucherShipping?: string
+) => {
+  let url = `${API_URL}/ShipingFee/calculate-by-address?userId=${userId}&addressId=${addressId}`;
+  // Thêm các tham số tùy chọn vào URL nếu có
+  if (subtotal !== undefined) {
+    url += `&subtotal=${subtotal}`;
+  }
+  if (idVoucherDiscount) {
+    url += `&idVoucherDiscount=${idVoucherDiscount}`;
+  }
+  if (idVoucherShipping) {
+    url += `&idVoucherShipping=${idVoucherShipping}`;
+  }
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Không thể tính phí vận chuyển');
+  }
+
+  return response.json();
+},
+
 
 
 
   //combo
+  //ComboCategory
+// Lấy tất cả danh mục combo
+async getComboCategories(): Promise<ComboCategory[]> {
+  try {
+    const response = await fetch(`${API_URL}/ComboCategories`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error fetching combo categories:", error);
+    return [];
+  }
+},
+
+// Lấy danh mục combo theo id
+async getComboCategoryById(id: number): Promise<ComboCategory> {
+  const response = await fetch(`${API_URL}/ComboCategories/${id}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch combo category");
+  }
+  return response.json();
+},
+
+// Thêm danh mục combo mới
+addComboCategory: async (category: Omit<ComboCategory, "id">): Promise<ComboCategory> => {
+  const response = await fetch(`${API_URL}/ComboCategories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(category),
+  });
+  if (!response.ok) throw new Error("Failed to add combo category");
+  return response.json();
+},
+
+// Cập nhật danh mục combo
+updateComboCategory: async (id: number, category: ComboCategory): Promise<void> => {
+  const response = await fetch(`${API_URL}/ComboCategories/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(category),
+  });
+  if (!response.ok) throw new Error("Failed to update combo category");
+},
+
+
+
+// Xóa danh mục combo
+deleteComboCategory: async (id: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/ComboCategories/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete combo category");
+  }
+},
+
+// Lấy tất cả combo trong một danh mục
+async getCombosByCategory(categoryId: number): Promise<Combo[]> {
+  const response = await fetch(`${API_URL}/Combos/category/${categoryId}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch combos by category");
+  }
+  return response.json();
+},
 // Thêm vào file api.ts
 // Các API calls cho Combo
 async getCombos(): Promise<Combo[]> {
@@ -566,5 +837,146 @@ async addFeedback(feedback: {
 
   return response.json();
 },
+// services/api.ts
+// Thêm các phương thức sau vào object api hiện có
+
+async getCart(): Promise<Cart> {
+  const response = await fetch(`${API_URL}/Cart`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) throw new Error('Không thể lấy thông tin giỏ hàng');
+  return response.json();
+},
+
+async addToCart(itemType: 'Product' | 'Combo', itemId: number, quantity: number): Promise<Cart> {
+  const response = await fetch(`${API_URL}/Cart/items`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ itemType, itemId, quantity }),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Không thể thêm vào giỏ hàng');
+  }
+  return response.json();
+},
+
+async updateCartItem(cartItemId: number, quantity: number): Promise<Cart> {
+  const response = await fetch(`${API_URL}/Cart/items`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ cartItemId, quantity }),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Không thể cập nhật giỏ hàng');
+  }
+  return response.json();
+},
+
+async removeCartItem(cartItemId: number): Promise<boolean> {
+  const response = await fetch(`${API_URL}/Cart/items`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+    body: JSON.stringify({ cartItemId }),
+  });
+  if (!response.ok) throw new Error('Không thể xóa sản phẩm khỏi giỏ hàng');
+  return response.json();
+},
+
+async clearCart(): Promise<boolean> {
+  const response = await fetch(`${API_URL}/Cart`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (!response.ok) throw new Error('Không thể xóa giỏ hàng');
+  return response.json();
+},
+
+// Voucher APIs
+getVouchers: async (): Promise<Voucher[]> => {
+  const response = await fetch(`${API_URL}/Voucher/all`, {
+    method: 'GET',
+    headers: getHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error('Không thể lấy danh sách voucher');
+  }
+
+  return response.json();
+},
+getVouchersAvailable: async (): Promise<Voucher[]> => {
+  const response = await fetch(`${API_URL}/Voucher/available`, {
+    method: 'GET',
+    headers: getHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error('Không thể lấy danh sách voucher');
+  }
+
+  return response.json();
+},
+addVoucher: async (voucher: Omit<Voucher, 'id'>): Promise<Voucher> => {
+  const response = await fetch(`${API_URL}/Voucher`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(voucher)
+  });
+
+  if (!response.ok) {
+    throw new Error('Không thể thêm voucher');
+  }
+
+  return response.json();
+},
+
+updateVoucher: async (id: string, voucher: Voucher): Promise<void> => {
+  const response = await fetch(`${API_URL}/Voucher/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(voucher)
+  });
+
+  if (!response.ok) {
+    throw new Error('Không thể cập nhật voucher');
+  }
+},
+
+deleteVoucher: async (id: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/Voucher/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error('Không thể xóa voucher');
+  }
+}, 
+
+//uservoucher
+getUserVouchers: async (userId: number) => {
+  const response = await fetch(`${API_URL}/UserVoucher/user/${userId}`);
+  if (!response.ok) throw new Error("Không thể lấy voucher đã lưu");
+  return response.json();
+},
+
+saveUserVoucher: async (userId: number, voucherId: string) => {
+  const response = await fetch(`${API_URL}/UserVoucher/save?userId=${userId}&voucherId=${voucherId}`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error("Không thể lưu voucher");
+  return response.json();
+},
+
+//getUserAddress
+getUserAddress: async (userId: number) => {
+  const response = await fetch(`${API_URL}/UserAddress/by-user/${userId}`);
+  if (!response.ok) throw new Error("Không thể lấy các địa chỉ người dùng");
+  return response.json();
+},
+
 
 };

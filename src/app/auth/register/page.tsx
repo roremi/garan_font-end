@@ -14,7 +14,6 @@ interface RegisterFormData {
   confirmPassword: string;
   fullName: string;
   phoneNumber: string;
-  address: string;
   username: string;
   terms: boolean;
   emailVerificationCode: string;
@@ -26,7 +25,6 @@ interface FormErrors {
   confirmPassword?: string;
   fullName?: string;
   phoneNumber?: string;
-  address?: string;
   username?: string;
   terms?: string;
   emailVerificationCode?: string;
@@ -43,7 +41,7 @@ export default function RegisterPage() {
     confirmPassword: '',
     fullName: '',
     phoneNumber: '',
-    address: '',
+  
     username: '',
     terms: false,
     emailVerificationCode: ''
@@ -195,10 +193,7 @@ export default function RegisterPage() {
       newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
     }
 
-    // Address
-    if (!formData.address) {
-      newErrors.address = 'Địa chỉ là bắt buộc';
-    }
+    
 
     // Terms
     if (!formData.terms) {
@@ -225,7 +220,6 @@ export default function RegisterPage() {
         password: formData.password,
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
-        address: formData.address,
         username: formData.email
       });
       
@@ -310,30 +304,7 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                Địa chỉ
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="address"
-                  name="address"
-                  type="text"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className={`block w-full pl-10 sm:text-sm rounded-md p-2.5 border ${
-                    errors.address ? 'border-red-500' : 'border-gray-300'
-                  } focus:ring-orange-500 focus:border-orange-500`}
-                  placeholder="Địa chỉ của bạn"
-                />
-              </div>
-              {errors.address && (
-                <p className="mt-1 text-sm text-red-600">{errors.address}</p>
-              )}
-            </div>
+            
 
             <div>
   <label htmlFor="email" className="block text-sm font-medium text-gray-700">

@@ -85,13 +85,7 @@ export default function ProductDetail() {
     }
 
     // Thêm sản phẩm vào giỏ hàng với số lượng đã chọn
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      quantity: quantity
-    });
+    addToCart("Product", product.id, 1);
 
     toast({
       title: "Thêm vào giỏ hàng thành công",

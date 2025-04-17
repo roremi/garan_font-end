@@ -15,6 +15,12 @@ export interface ComboProduct {
     isAvailable: boolean;
     createAt: string;
     idUser?: number;
+    categoryId?: number;  // Thêm trường này
+    category?: {          // Thêm trường này
+      id: number;
+      name: string;
+      description: string;
+    };
     comboProducts: ComboProduct[];
   }
   

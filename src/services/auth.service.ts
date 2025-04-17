@@ -536,8 +536,173 @@ class AuthService {
       throw error; // Ném lỗi lên để component xử lý
     }
   }
-  
 
+  
+  async getUserFormattedAddresses(userId: number): Promise<any> {
+    try {
+      console.log('Fetching addresses for userId:', userId);
+      
+      const token = storage.getItem('token');
+      if (!token) {
+        console.error('Token not found');
+        throw new Error('Không tìm thấy token');
+      }
+      
+      // Đảm bảo URL đúng với cấu hình backend
+      // Lưu ý: URL đúng là /api/UserAddress/by-user/{userId}
+      const url = `${API_URL}/UserAddress/by-user/${userId}`;
+      console.log('Calling API URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        if (response.status === 404) {
+          console.log('No addresses found or endpoint not found');
+          return []; // Trả về mảng rỗng thay vì lỗi
+        }
+        
+        throw new Error(errorText || `HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Addresses data:', data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching user addresses:', error);
+      throw error;
+    }
+  }
+
+  // Thêm vào class AuthService
+async addUserAddress(userId: number, addressData: any): Promise<any> {
+  try {
+    const token = storage.getItem('token');
+    if (!token) {
+      throw new Error('Không tìm thấy token');
+    }
+
+    const response = await fetch(`${API_URL}/UserAddress/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Đảm bảo gửi kèm cookie nếu cần
+      body: JSON.stringify(addressData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Thêm địa chỉ thất bại');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Lỗi khi thêm địa chỉ:', error);
+    throw error;
+  }
+}
+
+
+// Cập nhật trong class AuthService
+async updateUserAddress(userId: number, addressId: number, addressData: any): Promise<any> {
+  try {
+    const token = storage.getItem('token');
+    if (!token) {
+      throw new Error('Không tìm thấy token');
+    }
+
+    const response = await fetch(`${API_URL}/UserAddress/${userId}/${addressId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Đảm bảo gửi kèm cookie nếu cần
+      body: JSON.stringify(addressData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Cập nhật địa chỉ thất bại');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Lỗi khi cập nhật địa chỉ:', error);
+    throw error;
+  }
+}
+
+  
+  // Trong authService hoặc file api.ts
+  async setDefaultAddress(userId: number, addressId: number): Promise<any> {
+    try {
+      const token = storage.getItem('token');
+      if (!token) {
+        throw new Error('Không tìm thấy token');
+      }
+      const response = await fetch(`${API_URL}/UserAddress/set-default/${userId}/${addressId}`, {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Đảm bảo gửi kèm cookie nếu cần
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Failed to set default address");
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Lỗi khi thiết lập địa chỉ mặc định:', error);
+      throw error;
+    }
+  }
+
+ // Trong authService hoặc api.ts
+async deleteUserAddress(userId: number, addressId: number): Promise<any> {
+  try {
+    const token = storage.getItem('token');
+    if (!token) {
+      throw new Error('Không tìm thấy token');
+    }
+    const response = await fetch(`${API_URL}/UserAddress/${userId}/${addressId}`, {
+      method: "DELETE",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Đảm bảo gửi kèm cookie nếu cần
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || "Failed to delete address");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Lỗi khi xóa địa chỉ:', error);
+    throw error;
+  }
+}
+ 
 
   logout(): void {
     storage.removeItem('token');

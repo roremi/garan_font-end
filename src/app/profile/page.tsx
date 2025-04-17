@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { authService } from '@/services/auth.service';
+import UserAddressList from '@/components/UserAddressList'; // Điều chỉnh đường dẫn nếu cần
+
 import { 
   User, 
   KeyRound, 
@@ -67,12 +69,12 @@ export default function ProfilePage() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddressList, setShowAddressList] = useState(false);
   const [profileData, setProfileData] = useState({
     username: user?.username || '',
     fullName: user?.fullName || '',
     email: user?.email || '',
     phoneNumber: user?.phoneNumber || '',
-    address: user?.address || '',
     avatar: user?.avatar || '',
   });
   const [passwordData, setPasswordData] = useState({
@@ -97,7 +99,7 @@ export default function ProfilePage() {
         fullName: user?.fullName || '',
         email: user?.email || '',
         phoneNumber: user?.phoneNumber || '',
-        address: user?.address || '',
+
         avatar: user?.avatar || '',
       });
   
@@ -238,9 +240,10 @@ export default function ProfilePage() {
             </h1>
             
             <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-8">
+              <TabsList className="grid w-full grid-cols-3 mb-8">
                 <TabsTrigger value="profile">Thông tin cá nhân</TabsTrigger>
                 <TabsTrigger value="security">Bảo mật</TabsTrigger>
+                <TabsTrigger value="address">Địa chỉ</TabsTrigger> {/* 🆕 */}
               </TabsList>
 
               <TabsContent value="profile">
@@ -334,22 +337,6 @@ export default function ProfilePage() {
       />
     </FormControl>
   </FormItem>
-
-  {/* Address field */}
-  <FormItem>
-    <FormLabel>Địa chỉ</FormLabel>
-    <FormControl>
-      <Input
-        disabled={!isEditing}
-        value={profileData.address}
-        onChange={(e) => setProfileData(prev => ({
-          ...prev,
-          address: e.target.value
-        }))}
-        className="bg-white"
-      />
-    </FormControl>
-  </FormItem>
 </div>
 
 
@@ -416,87 +403,87 @@ export default function ProfilePage() {
                       />
                     </div>
                                 {/* Password change section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h4 className="text-sm font-medium">Đổi mật khẩu</h4>
-            <p className="text-sm text-muted-foreground">
-              Cập nhật mật khẩu để bảo vệ tài khoản của bạn
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setIsChangingPassword(!isChangingPassword)}
-          >
-            {isChangingPassword ? 'Hủy' : 'Đổi mật khẩu'}
-          </Button>
-        </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium">Đổi mật khẩu</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Cập nhật mật khẩu để bảo vệ tài khoản của bạn
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsChangingPassword(!isChangingPassword)}
+                        >
+                          {isChangingPassword ? 'Hủy' : 'Đổi mật khẩu'}
+                        </Button>
+                      </div>
 
-        {isChangingPassword && (
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <FormItem>
-              <FormLabel>Mật khẩu hiện tại</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  value={passwordData.oldPassword}
-                  onChange={(e) => setPasswordData(prev => ({
-                    ...prev,
-                    oldPassword: e.target.value
-                  }))}
-                  disabled={isLoading}
-                />
-              </FormControl>
-            </FormItem>
+                      {isChangingPassword && (
+                        <form onSubmit={handlePasswordChange} className="space-y-4">
+                          <FormItem>
+                            <FormLabel>Mật khẩu hiện tại</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                value={passwordData.oldPassword}
+                                onChange={(e) => setPasswordData(prev => ({
+                                  ...prev,
+                                  oldPassword: e.target.value
+                                }))}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                          </FormItem>
 
-            <FormItem>
-              <FormLabel>Mật khẩu mới</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData(prev => ({
-                    ...prev,
-                    newPassword: e.target.value
-                  }))}
-                  disabled={isLoading}
-                />
-              </FormControl>
-            </FormItem>
+                          <FormItem>
+                            <FormLabel>Mật khẩu mới</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                value={passwordData.newPassword}
+                                onChange={(e) => setPasswordData(prev => ({
+                                  ...prev,
+                                  newPassword: e.target.value
+                                }))}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                          </FormItem>
 
-            <FormItem>
-              <FormLabel>Xác nhận mật khẩu mới</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData(prev => ({
-                    ...prev,
-                    confirmPassword: e.target.value
-                  }))}
-                  disabled={isLoading}
-                />
-              </FormControl>
-            </FormItem>
+                          <FormItem>
+                            <FormLabel>Xác nhận mật khẩu mới</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                value={passwordData.confirmPassword}
+                                onChange={(e) => setPasswordData(prev => ({
+                                  ...prev,
+                                  confirmPassword: e.target.value
+                                }))}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                          </FormItem>
 
-            <div className="flex justify-end space-x-4">
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang cập nhật
-                  </>
-                ) : (
-                  'Cập nhật mật khẩu'
-                )}
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
+                          <div className="flex justify-end space-x-4">
+                            <Button
+                              type="submit"
+                              disabled={isLoading}
+                            >
+                              {isLoading ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Đang cập nhật
+                                </>
+                              ) : (
+                                'Cập nhật mật khẩu'
+                              )}
+                            </Button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
                     <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
@@ -557,6 +544,21 @@ export default function ProfilePage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+              <TabsContent value="address">
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Địa chỉ của bạn</CardTitle>
+                  <CardDescription>
+                    Quản lý các địa chỉ giao hàng của bạn
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {user && <UserAddressList userId={Number(user.id)} />}
+                </CardContent>
+              </Card>
+            </TabsContent>
+                          
+
             </Tabs>
           </div>
         </div>
