@@ -1,7 +1,7 @@
 // hooks/useSignalR.ts
 import { useEffect, useRef, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
-import { ChatMessage } from '@/services/chatService';
+import { ChatMessage, ChatRoom } from '@/services/chatService';
 
 export function useSignalR(userId: number, userName: string) {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
@@ -11,14 +11,16 @@ export function useSignalR(userId: number, userName: string) {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const [isTokenReady, setIsTokenReady] = useState(false);
 
-  // Kiểm tra token có sẵn sàng không
+  // Callback để xử lý phòng mới
+  const newRoomCallbacks = useRef<((room: ChatRoom) => void)[]>([]);
+
+  // Kiểm tra token
   useEffect(() => {
     const checkToken = () => {
       const token = localStorage.getItem('app_token');
       if (token) {
         setIsTokenReady(true);
       } else {
-        // Kiểm tra lại sau 500ms nếu token chưa sẵn sàng
         setTimeout(checkToken, 500);
       }
     };
@@ -26,10 +28,10 @@ export function useSignalR(userId: number, userName: string) {
     checkToken();
   }, []);
 
-  // Khởi tạo kết nối khi token đã sẵn sàng
+  // Khởi tạo kết nối SignalR
   useEffect(() => {
     if (!isTokenReady) return;
-    
+
     const getToken = () => {
       const token = localStorage.getItem('app_token') || '';
       return token.replace(/^"|"$/g, '');
@@ -39,44 +41,41 @@ export function useSignalR(userId: number, userName: string) {
       .withUrl('http://localhost:5000/chatHub', {
         accessTokenFactory: getToken
       })
-      .withAutomaticReconnect([0, 2000, 5000, 10000, 15000, 30000]) // Thêm chiến lược kết nối lại chi tiết hơn
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 15000, 30000])
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
     connectionRef.current = newConnection;
     setConnection(newConnection);
 
-    // Thiết lập sự kiện nhận tin nhắn
+    // Xử lý nhận tin nhắn
     newConnection.on('ReceiveMessage', (message: ChatMessage) => {
       setMessages(prev => [message, ...prev]);
     });
 
-    // Kết nối với xử lý lỗi tốt hơn
+    // Xử lý nhận phòng mới
+    newConnection.on('ReceiveNewRoom', (room: ChatRoom) => {
+      newRoomCallbacks.current.forEach(callback => callback(room));
+    });
+
     const startConnection = async () => {
       try {
         await newConnection.start();
         console.log('SignalR Connected');
         setConnected(true);
         setError(null);
+
+        // Tham gia nhóm Admins nếu là admin/staff
+        await newConnection.invoke('JoinAdminGroup');
       } catch (err: any) {
         console.error('SignalR Connection Error: ', err);
         setError('Không thể kết nối đến máy chủ chat');
-        
-        // Kiểm tra xem token có vấn đề không
-        const token = getToken();
-        if (!token) {
-          console.log('Token không tồn tại, đợi token...');
-          setTimeout(startConnection, 3000);
-        } else {
-          // Thử kết nối lại sau một khoảng thời gian
-          setTimeout(startConnection, 5000);
-        }
+        setTimeout(startConnection, 5000);
       }
     };
 
     startConnection();
 
-    // Thêm xử lý sự kiện kết nối lại
     newConnection.onreconnecting(error => {
       console.log('Đang kết nối lại SignalR...', error);
       setConnected(false);
@@ -92,16 +91,23 @@ export function useSignalR(userId: number, userName: string) {
       setConnected(false);
     });
 
-    // Cleanup khi component unmount
     return () => {
       if (connectionRef.current) {
         connectionRef.current.off('ReceiveMessage');
+        connectionRef.current.off('ReceiveNewRoom');
         connectionRef.current.stop();
       }
     };
   }, [isTokenReady]);
 
-  // Các hàm khác giữ nguyên...
+  // Hàm để đăng ký callback nhận phòng mới
+  const onNewRoom = (callback: (room: ChatRoom) => void) => {
+    newRoomCallbacks.current.push(callback);
+    return () => {
+      newRoomCallbacks.current = newRoomCallbacks.current.filter(cb => cb !== callback);
+    };
+  };
+
   const joinRoom = async (roomId: number) => {
     if (!connected || !connectionRef.current) {
       setError('Chưa kết nối đến máy chủ chat');
@@ -146,6 +152,7 @@ export function useSignalR(userId: number, userName: string) {
     messages,
     joinRoom,
     sendMessage,
-    setInitialMessages
+    setInitialMessages,
+    onNewRoom // Xuất callback để component sử dụng
   };
 }

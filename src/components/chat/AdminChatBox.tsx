@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Hàm helper để chuyển đổi enum thành label
 const getChatRoomStatusLabel = (status: ChatRoomStatus): string => {
   switch (status) {
     case ChatRoomStatus.Pending:
@@ -49,8 +48,20 @@ export default function AdminChatBox() {
     messages,
     joinRoom,
     sendMessage,
-    setInitialMessages
+    setInitialMessages,
+    onNewRoom // Thêm onNewRoom
   } = useSignalR(user?.id || 0, user?.fullName || 'Admin');
+
+  // Xử lý khi nhận được phòng mới
+  useEffect(() => {
+    const unsubscribe = onNewRoom((newRoom: ChatRoomType) => {
+      if (newRoom.status === statusFilter) {
+        setRooms(prev => [newRoom, ...prev]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [onNewRoom, statusFilter]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
