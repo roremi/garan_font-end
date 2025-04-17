@@ -1,4 +1,5 @@
-"use client"
+// admin/chat/page.tsx
+"use client";
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSignalR } from '@/hooks/useSignalR';
@@ -79,33 +80,51 @@ export default function ChatManagement() {
     messages,
     joinRoom,
     sendMessage,
-    setInitialMessages
+    setInitialMessages,
+    onNewRoom // Thêm onNewRoom
   } = useSignalR(user?.id || 0, user?.fullName || 'Admin');
-  
+
+  // Xử lý khi nhận được phòng mới
+  useEffect(() => {
+    const unsubscribe = onNewRoom((newRoom: ChatRoomType) => {
+      // Chỉ thêm phòng nếu phù hợp với statusFilter hiện tại
+      if (newRoom.status === statusFilter) {
+        setRooms(prev => [newRoom, ...prev]);
+      }
+      // Cập nhật thống kê
+      setStats(prev => ({
+        total: prev.total + 1,
+        pending: prev.pending + (newRoom.status === ChatRoomStatus.Pending ? 1 : 0),
+        success: prev.success + (newRoom.status === ChatRoomStatus.Success ? 1 : 0),
+        closed: prev.closed + (newRoom.status === ChatRoomStatus.Closed ? 1 : 0)
+      }));
+    });
+
+    return () => unsubscribe();
+  }, [onNewRoom, statusFilter]);
+
   useEffect(() => {
     const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
+  }, [messages]);
+
+  useEffect(() => {
+    if (selectedRoomId) {
+      const timeoutId = setTimeout(() => {
         if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          messagesEndRef.current.scrollIntoView({ behavior: 'instant' });
         }
-      };
-    
-      // Add a small delay to ensure DOM has updated
-      const timeoutId = setTimeout(scrollToBottom, 100);
-    
+      }, 100);
       return () => clearTimeout(timeoutId);
-    }, [messages]);
-  
-    useEffect(() => {
-        if (selectedRoomId) {
-          const timeoutId = setTimeout(() => {
-            if (messagesEndRef.current) {
-              messagesEndRef.current.scrollIntoView({ behavior: 'instant' });
-            }
-          }, 100);
-      
-          return () => clearTimeout(timeoutId);
-        }
-      }, [selectedRoomId]);
+    }
+  }, [selectedRoomId]);
+
   useEffect(() => {
     fetchRooms();
   }, [statusFilter]);
@@ -116,7 +135,6 @@ export default function ChatManagement() {
       const fetchedRooms = await chatService.getRoomsByStatus(statusFilter);
       setRooms(fetchedRooms);
       
-      // Cập nhật thống kê
       const allRooms = await chatService.getRooms();
       setStats({
         total: allRooms.length,
@@ -215,7 +233,6 @@ export default function ChatManagement() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-2">
@@ -244,7 +261,6 @@ export default function ChatManagement() {
         </div>
 
         <div className="grid grid-cols-12 gap-6">
-          {/* Danh sách phòng */}
           <div className="col-span-12 md:col-span-4 lg:col-span-3">
             <Card>
               <CardHeader className="pb-4">
@@ -305,7 +321,6 @@ export default function ChatManagement() {
             </Card>
           </div>
 
-          {/* Khu vực chat */}
           <div className="col-span-12 md:col-span-8 lg:col-span-9">
             <Card className="h-[calc(100vh-200px)]">
               {selectedRoomId ? (
@@ -361,20 +376,20 @@ export default function ChatManagement() {
                   </CardHeader>
 
                   <CardContent className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                            {loading ? (
-                                <div className="flex items-center justify-center h-full">
-                                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <span className="ml-2">Đang tải tin nhắn...</span>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                {[...messages].reverse().map((msg) => (
-                                    <ChatBubble key={msg.id} message={msg} />
-                                ))}
-                                <div ref={messagesEndRef} />
-                                </div>
-                            )}
-                            </CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                        <span className="ml-2">Đang tải tin nhắn...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {[...messages].reverse().map((msg) => (
+                          <ChatBubble key={msg.id} message={msg} />
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    )}
+                  </CardContent>
 
                   <div className="p-4 border-t">
                     <div className="flex items-end gap-2">

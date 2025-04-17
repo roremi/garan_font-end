@@ -13,7 +13,8 @@ import {
   FolderOpen,
   Bell,
   Search,
-  User
+  User,
+  MessageCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,11 @@ const menuItems = [
     title: 'Quản lý người dùng',
     icon: Users,
     path: '/admin/users'
+  },
+  {
+    title: 'Quản lý tin nhắn',
+    icon: MessageCircle,
+    path: '/admin/chat'
   },
   {
     title: 'Cài đặt',
