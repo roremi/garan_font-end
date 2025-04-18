@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 const loginSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const { loginWithGoogle } = useAuth();
 
   const {
     register,
@@ -60,7 +62,6 @@ export default function LoginPage() {
           email: userProfile.email,
           fullName: userProfile.fullName,
           phoneNumber: userProfile.phoneNumber,
-          address: userProfile.address,
           role: Number(userProfile.role)
         });
 
@@ -93,7 +94,6 @@ export default function LoginPage() {
           email: userProfile.email,
           fullName: userProfile.fullName,
           phoneNumber: userProfile.phoneNumber,
-          address: userProfile.address,
           role: Number(userProfile.role)
         });
 
@@ -369,6 +369,19 @@ export default function LoginPage() {
                     <Github className="h-5 w-5 mr-2" />
                     Github
                   </Button>
+                  <GoogleLogin
+  onSuccess={(credentialResponse) => {
+    if (credentialResponse.credential) {
+      loginWithGoogle(credentialResponse.credential)
+        .then(() => {
+          toast.success("Đăng nhập Google thành công");
+          router.push("/");
+        })
+        .catch(() => toast.error("Đăng nhập Google thất bại"));
+    }
+  }}
+  onError={() => toast.error("Google login thất bại")}
+/>
                 </div>
               </div>
             </>

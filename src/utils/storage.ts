@@ -7,27 +7,35 @@ class Storage {
   
     setItem(key: string, value: any): void {
       if (typeof window === 'undefined') return;
-      
+    
       try {
-        const serializedValue = JSON.stringify(value);
+        const isJson = typeof value === 'object';
+        const serializedValue = isJson ? JSON.stringify(value) : value;
         localStorage.setItem(this.prefix + key, serializedValue);
       } catch (error) {
         console.error('Error saving to localStorage:', error);
       }
     }
+    
   
-    getItem<T>(key: string): T | null {
+    getItem<T>(key: string): T | string | null {
       if (typeof window === 'undefined') return null;
-      
+    
       try {
         const item = localStorage.getItem(this.prefix + key);
-        return item ? JSON.parse(item) : null;
+        if (!item) return null;
+    
+        try {
+          return JSON.parse(item);
+        } catch {
+          return item; // Trường hợp như token JWT
+        }
       } catch (error) {
         console.error('Error reading from localStorage:', error);
         return null;
       }
     }
-  
+    
     removeItem(key: string): void {
       if (typeof window === 'undefined') return;
       
