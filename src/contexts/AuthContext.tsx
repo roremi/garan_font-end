@@ -1,6 +1,11 @@
 "use client"
 const URL_API = "http://localhost:5001/";
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
+import { authService } from '@/services/auth.service';
+
+const GOOGLE_CLIENT_ID = '323366452251-9ue1mht4lmpefbctivuusovsbtsv6cse.apps.googleusercontent.com'; // 👉 đưa vào biến env nếu cần
 
 interface User {
   id: number;
@@ -8,7 +13,6 @@ interface User {
   email: string;
   fullName: string;
   phoneNumber: string;
-  address: string;
   role: string | number;
   avatar?: string;
   is2FAEnabled?: boolean;
@@ -35,6 +39,7 @@ interface AuthContextType {
   setupTwoFactor: () => Promise<SetupTwoFactorResponseDto>;
   verifyTwoFactor: (code: string) => Promise<void>;
   disableTwoFactor: () => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,10 +77,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('app_token');
     localStorage.removeItem('adminToken');
   };
-
+  const loginWithGoogle = async (idToken: string) => {
+    try {
+      const response = await fetch(`https://localhost:5001/api/User/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+  
+      const data = await response.json();
+  
+      if (data.token) {
+        // ✅ Lưu token ngay trước khi gọi getProfile
+        localStorage.setItem('app_token', data.token);
+  
+        const userProfile = await authService.getProfile();
+        login(userProfile);
+      } else {
+        throw new Error(data.message || "Không lấy được token từ Google login");
+      }
+    } catch (err) {
+      console.error("Google login error", err);
+      throw err;
+    }
+  };
+  
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const token = localStorage.getItem('token')?.replace(/^"(.*)"$/, '$1');
+      const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
       const response = await fetch(URL_API+'api/profile', {
         method: 'PUT',
         headers: {
@@ -194,6 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <AuthContext.Provider 
       value={{ 
         user, 
@@ -205,11 +235,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getTwoFactorStatus,
         setupTwoFactor,
         verifyTwoFactor,
+        loginWithGoogle,
         disableTwoFactor
       }}
     >
       {children}
     </AuthContext.Provider>
+    </GoogleOAuthProvider>
   );
 }
 
