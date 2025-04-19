@@ -72,7 +72,7 @@ export default function
     <div className="flex justify-between items-center p-4 bg-gray-50 border rounded shadow-sm mb-4">
       <div className="flex items-center space-x-2">
         <Ticket className="text-orange-500" />
-        <span className="text-lg font-medium">Shopee Voucher</span>
+        <span className="text-lg font-medium">Cục Tác Voucher</span>
       </div>
       <Button type="button" variant="link" className="text-blue-600" onClick={() => setShowDialog(true)}>
         Chọn Voucher
@@ -81,58 +81,64 @@ export default function
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Chọn Shopee Voucher</DialogTitle>
+            <DialogTitle>Chọn Voucher</DialogTitle>
           </DialogHeader>
           <div className="max-h-[400px] overflow-y-auto space-y-4">
-            {(['discount', 'shipping'] as const).map(type => (
-              <div key={type}>
-                <h3 className="text-orange-500 font-semibold mb-2">
-                  {type === 'discount' ? 'Voucher Giảm Giá' : 'Voucher Miễn Phí Vận Chuyển'}
-                </h3>
-                <div className="space-y-4">
-                {grouped[type].map((v) => {
-                    const isSelected = (type === 'shipping' ? selected.shipping?.id : selected.discount?.id) === v.id;
-                    const isEligible = isVoucherEligible(v);
+  {grouped.discount.length === 0 && grouped.shipping.length === 0 ? (
+    <p className="text-center text-gray-600 mt-4">
+      Bạn chưa có voucher nào. Vui lòng đến <a href="/voucher" className="text-blue-600 underline">trang voucher</a> để tìm kiếm những voucher nhé.
+    </p>
+  ) : (
+    (['discount', 'shipping'] as const).map(type => (
+      <div key={type}>
+        <h3 className="text-orange-500 font-semibold mb-2">
+          {type === 'discount' ? 'Voucher Giảm Giá' : 'Voucher Miễn Phí Vận Chuyển'}
+        </h3>
+        <div className="space-y-4">
+          {grouped[type].map((v) => {
+            const isSelected = (type === 'shipping' ? selected.shipping?.id : selected.discount?.id) === v.id;
+            const isEligible = isVoucherEligible(v);
 
-                    return (
-                      <div
-                        key={v.id}
-                        className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-orange-500
-                          ${isSelected ? 'border-orange-500' : 'bg-white shadow-sm'}
-                          ${!isEligible ? 'opacity-50 cursor-not-allowed' : ''}
-                        `}
-                        onClick={() => {
-                          if (!isEligible) return; // ❌ Không cho chọn nếu không đủ điều kiện
-                          handleSelect(v);
-                        }}
-                      >
-                        <div>
-                          <p className="font-semibold text-orange-600">
-                            {v.type === 'Shipping' ? 'Miễn phí vận chuyển' : v.type === 'Percent' ? `Giảm ${v.discountPercent}%` : `Giảm ${v.discountValue?.toLocaleString()}₫`}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Đơn tối thiểu {v.minimumOrderValue.toLocaleString()}₫
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            HSD: {new Date(v.expirationDate).toLocaleString("vi-VN")}
-                          </p>
-                          {!isEligible && (
-                            <p className="text-sm text-red-500 mt-1">Không đủ điều kiện áp dụng</p>
-                          )}
-                        </div>
-                        {isSelected && isEligible ? (
-                          <CheckCircle className="text-green-600 w-6 h-6" />
-                        ) : (
-                          <Circle className="text-gray-400 w-6 h-6" />
-                        )}
-                      </div>
-                    );
-                  })}
-
+            return (
+              <div
+                key={v.id}
+                className={`border rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-orange-500
+                  ${isSelected ? 'border-orange-500' : 'bg-white shadow-sm'}
+                  ${!isEligible ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+                onClick={() => {
+                  if (!isEligible) return;
+                  handleSelect(v);
+                }}
+              >
+                <div>
+                  <p className="font-semibold text-orange-600">
+                    {v.type === 'Shipping' ? 'Miễn phí vận chuyển' : v.type === 'Percent' ? `Giảm ${v.discountPercent}%` : `Giảm ${v.discountValue?.toLocaleString()}₫`}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Đơn tối thiểu {v.minimumOrderValue.toLocaleString()}₫
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    HSD: {new Date(v.expirationDate).toLocaleString("vi-VN")}
+                  </p>
+                  {!isEligible && (
+                    <p className="text-sm text-red-500 mt-1">Không đủ điều kiện áp dụng</p>
+                  )}
                 </div>
+                {isSelected && isEligible ? (
+                  <CheckCircle className="text-green-600 w-6 h-6" />
+                ) : (
+                  <Circle className="text-gray-400 w-6 h-6" />
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+      </div>
+    ))
+  )}
+</div>
+
         </DialogContent>
       </Dialog>
     </div>

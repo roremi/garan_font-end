@@ -39,7 +39,8 @@ const statusNames = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedDate, setSelectedDate] = useState('all');
+  const [selectedDate, setSelectedDate] = useState('today');
+
   const [viewOrder, setViewOrder] = useState<OrderResponse & { details?: OrderDetailResponse[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);

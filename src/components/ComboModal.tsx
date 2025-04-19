@@ -10,6 +10,7 @@ import { Combo, ComboProduct } from "@/types/combo";
 import { Product } from "@/types/product";
 import { ComboCategory } from "@/types/ComboCategory";
 import { api } from "@/services/api";
+import { toast } from 'sonner'; // Replace useToast with sonner
 import { 
   Table,
   TableBody,
@@ -19,7 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
 import Image from 'next/image';
 import { X, Upload, Loader2 } from 'lucide-react';
 
@@ -46,8 +46,8 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
   const [selectedProducts, setSelectedProducts] = useState<Map<number, ComboProduct>>(new Map());
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [tempQuantities, setTempQuantities] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -70,7 +70,6 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
       setCategories(categoriesData);
   
       if (mode === 'edit' && combo?.id) {
-        // Nếu combo có category, lấy thông tin chi tiết của combo để đảm bảo có categoryId
         let comboDetail = combo;
         if (combo.id) {
           try {
@@ -117,11 +116,7 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
       }
     } catch (error) {
       console.error('Error loading initial data:', error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải dữ liệu",
-        variant: "destructive"
-      });
+      toast.error('Không thể tải dữ liệu'); // Updated to sonner
     } finally {
       setLoading(false);
     }
@@ -141,16 +136,9 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
         imageUrl: imageUrl
       }));
 
-      toast({
-        title: "Thành công",
-        description: "Tải ảnh lên thành công",
-      });
+      toast.success('Tải ảnh thành công'); // Updated to sonner
     } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải ảnh lên",
-        variant: "destructive",
-      });
+      toast.error('Không thể tải ảnh'); // Updated to sonner
     } finally {
       setImageLoading(false);
     }
@@ -164,21 +152,23 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
         imageUrl: ''
       }));
 
-      toast({
-        title: "Thành công",
-        description: "Xóa ảnh thành công",
-      });
+      toast.success('Xóa ảnh thành công'); // Updated to sonner
     } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể xóa ảnh",
-        variant: "destructive",
-      });
+      toast.error('Không thể xóa ảnh'); // Updated to sonner
     } finally {
       setImageLoading(false);
     }
   };
 
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/[^0-9]/g, '');
+    const newPrice = parseFloat(rawValue);
+    setFormData(prev => ({
+      ...prev,
+      price: isNaN(newPrice) ? 0 : newPrice
+    }));
+  };
+  
   const handleProductSelection = (product: Product, checked: boolean ) => {
     const newSelection = new Map(selectedProducts);
     
@@ -226,7 +216,7 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
     e.preventDefault();
     
     if (selectedProducts.size === 0) {
-      alert('Vui lòng chọn ít nhất một sản phẩm cho combo');
+      toast.error('Phải chọn ít nhất 1 sản phẩm'); // Updated to sonner
       return;
     }
 
@@ -298,9 +288,9 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
                 <Label htmlFor="price">Giá (Tự động tính: {calculateTotalPrice().toLocaleString()}đ)</Label>
                 <Input
                   id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                  type="text"
+                  value={formData.price?.toLocaleString('vi-VN')}
+                  onChange={handlePriceChange}
                   placeholder="Để trống để tự động tính"
                 />
               </div>
@@ -401,12 +391,31 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
                         <TableCell>{product.price.toLocaleString()}đ</TableCell>
                         <TableCell>
                           <Input
-                            type="number"
-                            min="1"
-                            value={selectedProducts.get(product.id)?.quantity || 0}
-                            onChange={(e) => 
-                              handleQuantityChange(product.id, parseInt(e.target.value))
-                            }
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={tempQuantities[product.id] ?? selectedProducts.get(product.id)?.quantity?.toString() ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (/^\d*$/.test(value)) {
+                                setTempQuantities((prev) => ({
+                                  ...prev,
+                                  [product.id]: value
+                                }));
+                              }
+                            }}
+                            onBlur={() => {
+                              const raw = tempQuantities[product.id];
+                              const parsed = parseInt(raw);
+                              if (!isNaN(parsed)) {
+                                handleQuantityChange(product.id, parsed);
+                              }
+                              setTempQuantities((prev) => {
+                                const newState = { ...prev };
+                                delete newState[product.id];
+                                return newState;
+                              });
+                            }}
                             disabled={!selectedProducts.has(product.id)}
                             className="w-20"
                           />

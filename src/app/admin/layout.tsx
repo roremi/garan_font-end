@@ -14,7 +14,10 @@ import {
   Bell,
   Search,
   User,
-  MessageCircle
+  MessageCircle,
+  TicketPercent,
+  Layers,
+  Boxes  
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,8 +49,8 @@ const menuItems = [
     path: '/admin/Category'
   },
   {
-    title: 'Quản lý danh mục Combo',
-    icon: FolderOpen,
+    title: 'Quản lý nhóm Combo',
+    icon: Layers,
     path: '/admin/ComboCategory'
   },
   {
@@ -58,12 +61,11 @@ const menuItems = [
   {
     title: 'Quản lý đơn hàng',
     icon: ShoppingBag,
-    path: '/admin/orders',
-    badge: '5' // Số đơn hàng mới
+    path: '/admin/orders'
   },
   {
     title: 'Quản lý voucher',
-    icon: ShoppingBag,
+    icon: TicketPercent,
     path: '/admin/Voucher',
   },
   {
@@ -158,11 +160,6 @@ export default function AdminLayout({
                 <span className={pathname === item.path ? 'font-medium' : ''}>
                   {item.title}
                 </span>
-                {item.badge && (
-                  <Badge variant="destructive" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
               </Button>
             ))}
           </div>

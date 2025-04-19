@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Voucher } from '@/types/voucher';
+import { toast } from 'sonner'; // nhớ chắc chắn là đã import
 
 interface VoucherModalProps {
     isOpen: boolean;
@@ -88,13 +89,23 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({ isOpen, onClose, onS
     return Number(value).toLocaleString('vi-VN');
   };
 
-  const handleSubmit = () => {
+
+const handleSubmit = async () => {
+  try {
     if (mode === 'edit' && voucher?.id) {
-      onSubmit({ ...formData, id: voucher.id });
+      await onSubmit({ ...formData, id: voucher.id });
+      toast.success('Cập nhật voucher thành công');
     } else {
-      onSubmit(formData);
+      await onSubmit(formData);
+      toast.success('Thêm voucher thành công');
     }
-  };
+    onClose();
+  } catch (error: any) {
+    const message = error?.message || 'Có lỗi xảy ra khi lưu voucher';
+    toast.error(message); // hiển thị lỗi nếu API thất bại
+  }
+};
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Eye, Calendar, Box, DollarSign, Truck } from "lucide-react";
 import { Order } from '@/types/order';
 
@@ -62,11 +63,13 @@ export default function OrderHistory() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [orderDetails, setOrderDetails] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('all');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -79,6 +82,16 @@ export default function OrderHistory() {
       fetchOrders();
     }
   }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    // Filter orders based on active tab
+    if (activeTab === 'all') {
+      setFilteredOrders(orders);
+    } else {
+      const status = parseInt(activeTab);
+      setFilteredOrders(orders.filter(order => order.status === status));
+    }
+  }, [activeTab, orders]);
 
   const fetchOrders = async () => {
     if (!isAuthenticated || !user) {
@@ -274,7 +287,19 @@ export default function OrderHistory() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {orders.length === 0 ? (
+              {/* Tabs for filtering orders by status */}
+                <div className="sticky top-0 z-10 bg-white border-b mb-6">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="overflow-x-auto scrollbar-hide">
+                    <TabsList className="flex w-full min-w-max border-b">
+                      <TabsTrigger value="all" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Tất cả</TabsTrigger>
+                      <TabsTrigger value="0" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Chờ xác nhận</TabsTrigger>
+                      <TabsTrigger value="1" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đang giao hàng</TabsTrigger>
+                      <TabsTrigger value="2" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đã hoàn thành</TabsTrigger>
+                      <TabsTrigger value="3" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đã hủy</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              {filteredOrders.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   Chưa có đơn hàng nào
                 </div>
@@ -290,7 +315,7 @@ export default function OrderHistory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
+                    {filteredOrders.map((order) => (
                       <TableRow key={order.id} className="hover:bg-gray-50/50 transition-colors">
                         <TableCell className="font-medium">#{order.id}</TableCell>
                         <TableCell>{formatDate(order.createAt)}</TableCell>
