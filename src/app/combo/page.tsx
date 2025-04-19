@@ -124,13 +124,12 @@ export default function CombosPage() {
       
       <main className="pt-16">
         {/* Hero Section */}
-        <div className="bg-orange-600 text-white">
-          <div className="container mx-auto px-4 py-12">
-            <h1 className="text-4xl font-bold mb-4">Combo Ưu Đãi</h1>
-            <p className="text-xl opacity-90">Tiết kiệm hơn với các combo đặc biệt của chúng tôi</p>
+        <div className="bg-white shadow">
+          <div className="container mx-auto px-4 py-6">
+            <h1 className="text-3xl font-bold text-gray-900">Combo thực đơn</h1>
+            <p className="mt-2 text-gray-600">Tiết kiệm hơn với các combo đặc biệt của chúng tôi</p>
           </div>
         </div>
-
         {/* Debug info - Xóa sau khi debug xong
         <div className="container mx-auto px-4 py-2 text-xs text-gray-500">
           <p>Danh mục đã chọn: {selectedCategory}</p>
@@ -174,55 +173,45 @@ export default function CombosPage() {
 
         {/* Combos Grid */}
         <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredCombos.map((combo) => (
-              <div key={combo.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="relative h-48">
-                  <Image
-                    src={combo.imageUrl || '/images/default-combo.jpg'}
-                    alt={combo.name}
-                    fill
-                    className="object-cover"
-                  />
-                  <span className="absolute top-2 left-2 bg-orange-600 text-white text-xs px-2 py-1 rounded-full">
-                    {getCategoryName(combo)}
-                  </span>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold mb-2">{combo.name}</h3>
-                  <p className="text-gray-600 mb-4">{combo.description}</p>
-                  
-                  <div className="space-y-3 mb-4">
-                    {combo.comboProducts && combo.comboProducts.map((product, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>{product.quantity}x {product.productName}</span>
-                      </div>
-                    ))}
-                  </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+  {filteredCombos.map((combo) => (
+    <div key={combo.id} className="bg-white rounded-2xl shadow p-4 flex flex-col h-full">
+      
+      {/* Ảnh combo giữ tỉ lệ và không méo */}
+      <div className="relative w-full aspect-[4/3] mb-4 rounded-lg overflow-hidden">
+        <Image
+          src={combo.imageUrl || '/images/default-combo.jpg'}
+          alt={combo.name}
+          fill
+          className="object-cover"
+        />
+      </div>
 
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-orange-600">
-                      {new Intl.NumberFormat('vi-VN', {
-                        style: 'currency',
-                        currency: 'VND'
-                      }).format(combo.price)}
-                    </span>
-                  </div>
+      {/* Tiêu đề & Giá */}
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-base font-semibold text-gray-900">{combo.name}</h3>
+        <p className="text-sm font-semibold text-gray-900">
+          {combo.price.toLocaleString()}đ
+        </p>
+      </div>
 
-                  <Button 
-                    className="w-full bg-orange-600 hover:bg-orange-700"
-                    disabled={!combo.isAvailable}
-                    onClick={() => handleAddToCart(combo)}
-                  >
-                    {combo.isAvailable ? 'Đặt ngay' : 'Không khả dụng'}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Mô tả sản phẩm dạng rút gọn */}
+      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+        {combo.comboProducts?.map(p => `${p.quantity} ${p.productName}`).join(" + ")}
+      </p>
+
+      {/* Nút Thêm */}
+      <Button
+        className="mt-auto w-full bg-black text-white hover:bg-zinc-800 rounded-full py-2"
+        onClick={() => handleAddToCart(combo)}
+        disabled={!combo.isAvailable}
+      >
+        {combo.isAvailable ? 'Thêm' : 'Không khả dụng'}
+      </Button>
+    </div>
+  ))}
+</div>
+
         </div>
 
         {/* No Results Message */}

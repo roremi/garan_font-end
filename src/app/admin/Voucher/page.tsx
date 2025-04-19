@@ -89,7 +89,7 @@ export default function VouchersPage() {
               <TableHead>Mã</TableHead>
               <TableHead>Loại</TableHead>
               <TableHead>Mô tả</TableHead>
-              <TableHead>Giá trị</TableHead>
+              {/* <TableHead>Giá trị</TableHead> */}
               <TableHead>HSD</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Thao tác</TableHead>
@@ -101,7 +101,7 @@ export default function VouchersPage() {
                 <TableCell>{v.code}</TableCell>
                 <TableCell>{v.type}</TableCell>
                 <TableCell>{v.description}</TableCell>
-                <TableCell>{v.discountValue ?? `${v.discountPercent}%`}</TableCell>
+                {/* <TableCell>{v.discountValue ?? `${v.discountPercent}%`}</TableCell> */}
                 <TableCell>{new Date(v.expirationDate).toLocaleDateString()}</TableCell>
                 <TableCell>{v.status}</TableCell>
                 <TableCell>

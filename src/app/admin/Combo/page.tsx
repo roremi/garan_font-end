@@ -186,7 +186,6 @@ export default function CombosPage() {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Tên Combo</TableHead>
-              <TableHead>Danh mục</TableHead>
               <TableHead>Mô tả</TableHead>
               <TableHead>Giá</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -198,7 +197,6 @@ export default function CombosPage() {
               <TableRow key={combo.id}>
                 <TableCell>{combo.id}</TableCell>
                 <TableCell>{combo.name}</TableCell>
-                <TableCell>{getCategoryName(combo.categoryId)}</TableCell>
                 <TableCell>{combo.description}</TableCell>
                 <TableCell>{combo.price.toLocaleString()}đ</TableCell>
                 <TableCell>

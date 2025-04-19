@@ -54,7 +54,7 @@ export default function CheckoutPage() {
     fullName: user?.fullName || '',
     phone: user?.phoneNumber || '',
     email: user?.email || '',
-    address: user?.address || '',
+    address: '',
     note: '',
     paymentMethod: 'COD'
   });
@@ -518,6 +518,11 @@ export default function CheckoutPage() {
                   setDefaultAddress(addr);
                   setSelectedAddressId(addr.id);
                   setShowAddressDialog(false);
+                
+                  // Cập nhật formData.address để dùng khi đặt hàng
+                  const fullAddress = `${addr.detail}, ${addr.wardName}, ${addr.districtName}, ${addr.provinceName}`;
+                  setFormData(prev => ({ ...prev, address: fullAddress }));
+                
                   if (user?.id) {
                     calculateShippingFeeByAddress(
                       user.id,
@@ -528,6 +533,7 @@ export default function CheckoutPage() {
                     );
                   }
                 }}
+                
                 onRefresh={refreshDefaultAddress}
               />
             )}
