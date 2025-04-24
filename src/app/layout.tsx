@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { CartProvider } from '@/contexts/CartContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ChatComponent from '@/components/chat/ChatComponent';
+import Head from 'next/head';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,7 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    
     <html lang="vi">
+      
       <body className={inter.className}>
         <AuthProvider>
           <CartProvider>

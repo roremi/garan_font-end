@@ -69,6 +69,10 @@ export default function Header() {
               <History className="mr-2 h-4 w-4" />
               <span>Lịch sử đơn hàng</span>
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/gifCart')}>
+              <History className="mr-2 h-4 w-4" />
+              <span>Gif-Cart</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />

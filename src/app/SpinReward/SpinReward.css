@@ -1,0 +1,94 @@
+
+
+   .spin-wheel-container {
+    background: linear-gradient(to bottom, #ff9100, #ff3d00);
+    padding: 60px 20px;
+    border-radius: 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: start;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Mũi tên chỉ */
+  .wheel-pointer {
+    width: 0;
+    height: 0;
+    border-left: 24px solid transparent;
+    border-right: 24px solid transparent;
+    border-bottom: 40px solid #fff;
+    position: relative;
+    top: 12px;
+    z-index: 5;
+  }
+  
+  /* Tiêu đề */
+  .spin-wheel-heading {
+    color:#f97316;
+    font-size: 42px;
+    font-weight: 800;
+    text-shadow: none;
+    margin: 16px 0 24px;
+    text-align: center;
+  }
+  
+  /* Khung trắng bao vòng quay */
+  .spin-wheel-frame {
+    background: #fff;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    padding: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Canvas vòng quay */
+  .spin-wheel-canvas {
+    max-width: 100%;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    background: radial-gradient(circle at center, #ffd700, #f44336);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+  }
+  
+  .spin-wheel-canvas:hover {
+    transform: scale(1.02);
+  }
+  
+  .spin-wheel-canvas.spinning {
+    cursor: not-allowed;
+    opacity: 0.85;
+  }
+  
+  /* Nút kết quả */
+  .spin-wheel-result {
+    margin-top: 30px;
+    background: #000000aa;
+    color: #fff;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 20px;
+    font-weight: 600;
+    animation: fadeInUp 0.4s ease;
+  }
+  
+  /* Kết quả animation */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  

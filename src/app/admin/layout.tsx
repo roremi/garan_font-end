@@ -67,6 +67,11 @@ const menuItems = [
     path: '/admin/Voucher',
   },
   {
+    title: 'Quản lý điểm thưởng',
+    icon: Bell,
+    path: '/admin/gift-point',
+  },
+  {
     title: 'Quản lý người dùng',
     icon: Users,
     path: '/admin/users'

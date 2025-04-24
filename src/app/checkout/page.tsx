@@ -1,5 +1,7 @@
-"use client"
-import React, { useState, useEffect, useCallback } from 'react';
+// CheckoutPage.tsx – hỗ trợ dùng GP trừ tiền
+"use client";
+
+import React, { useState, useEffect, useCallback, ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -13,15 +15,12 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { OrderCreateRequest } from '@/types/order';
+import { UserAddress } from '@/types/useraddress';
 import VoucherSelector from "@/components/VoucherSelector";
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { CartItem } from '@/types/cart';
-import { Voucher } from '@/types/voucher';
-import { UserAddress } from '@/types/useraddress';
-import { authService } from '@/services/auth.service';
 import UserAddressList from '@/components/UserAddressList';
+import { OrderCreateRequest } from '@/types/order';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -31,25 +30,24 @@ export default function CheckoutPage() {
   const subtotal = cart?.subtotal ?? 0;
   const cartItems = cart?.cartItems || [];
 
-  // States cho địa chỉ và loading
   const [defaultAddress, setDefaultAddress] = useState<UserAddress | null>(null);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
-  const [isLoadingAddress, setIsLoadingAddress] = useState(true); // Thêm trạng thái loading
+  const [isLoadingAddress, setIsLoadingAddress] = useState(true);
 
-  // States cho phí vận chuyển và giảm giá
   const [finalSubtotal, setFinalSubtotal] = useState(subtotal);
   const [finalShippingFee, setFinalShippingFee] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [shippingDiscount, setShippingDiscount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(subtotal);
 
-  // States cho voucher
-  const [selectedVoucher, setSelectedVoucher] = useState<{ discount?: Voucher; shipping?: Voucher }>({});
-  const [idVoucherDiscount, setIdVoucherDiscount] = useState<string | undefined>();
-  const [idVoucherShipping, setIdVoucherShipping] = useState<string | undefined>();
+  const [userPoints, setUserPoints] = useState(0);
+  const [usedGP, setUsedGP] = useState(0);
 
-  // Form data
+  const [selectedVoucher, setSelectedVoucher] = useState<{ discount?: any; shipping?: any }>({});
+  const [idVoucherDiscount, setIdVoucherDiscount] = useState<string | undefined>(undefined);
+  const [idVoucherShipping, setIdVoucherShipping] = useState<string | undefined>(undefined);
+
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     phone: user?.phoneNumber || '',
@@ -59,208 +57,68 @@ export default function CheckoutPage() {
     paymentMethod: 'COD'
   });
 
-  // Kiểm tra đăng nhập
+  const gpDiscountAmount = (usedGP / 100) * 10000;
+
+  const handleUseGP = (e: ChangeEvent<HTMLInputElement>) => {
+    let value = parseInt(e.target.value) || 0;
+    const maxGP = Math.floor(userPoints / 100) * 100;
+    value = Math.min(value, maxGP);
+    value = Math.floor(value / 100) * 100;
+    setUsedGP(value);
+  };
+
   useEffect(() => {
     if (!isAuthenticated) {
-      toast({
-        variant: "destructive",
-        title: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để tiếp tục thanh toán",
-      });
+      toast({ variant: "destructive", title: "Yêu cầu đăng nhập", description: "Vui lòng đăng nhập để tiếp tục." });
       router.push('/auth/login');
     }
-  }, [isAuthenticated, router, toast]);
+  }, [isAuthenticated]);
 
-  // Hàm tải địa chỉ mặc định - chỉ gọi một lần
-  const refreshDefaultAddress = useCallback(async () => {
-    if (!user?.id) {
-      setIsLoadingAddress(false);
-      return;
+  useEffect(() => {
+    if (user?.id) {
+      api.getUserPoints(user.id).then((res) => setUserPoints(res.points));
     }
-    setIsLoadingAddress(true);
+  }, [user?.id]);
+
+  const refreshDefaultAddress = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const allAddresses = await authService.getUserFormattedAddresses(user.id);
+      const allAddresses: UserAddress[] = await api.getUserAddress(user.id);
       const defaultAddr = allAddresses.find((addr: UserAddress) => addr.isDefault);
       setDefaultAddress(defaultAddr || null);
       setSelectedAddressId(defaultAddr?.id || null);
       if (defaultAddr) {
         const fullAddress = `${defaultAddr.detail}, ${defaultAddr.wardName}, ${defaultAddr.districtName}, ${defaultAddr.provinceName}`;
         setFormData(prev => ({ ...prev, address: fullAddress }));
-      } else {
-        setShowAddressDialog(true); // Tự động mở dialog nếu không có địa chỉ mặc định
       }
-    } catch (err: any) {
-      const rawMessage = err?.message || err?.toString?.();
-      if (rawMessage?.includes("Người dùng chưa có địa chỉ nào")) {
-        setDefaultAddress(null);
-        setSelectedAddressId(null);
-        setShowAddressDialog(true); // Tự động mở dialog nếu không có địa chỉ
-      } else {
-        console.error("Không thể lấy địa chỉ mặc định", err);
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải lại địa chỉ mặc định",
-        });
-      }
+    } catch (err) {
+      console.error("Không thể lấy địa chỉ mặc định", err);
     } finally {
       setIsLoadingAddress(false);
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
-  // Tải địa chỉ mặc định khi component mount
-  useEffect(() => {
-    refreshDefaultAddress();
-  }, [refreshDefaultAddress]);
+  useEffect(() => { refreshDefaultAddress(); }, [refreshDefaultAddress]);
 
-  // Hàm tính phí vận chuyển - tối ưu hóa để không gọi lại nếu không cần thiết
-  const calculateShippingFeeByAddress = useCallback(async (
-    userId: number,
-    addressId: number,
-    subtotal: number,
-    idVoucherDiscount?: string,
-    idVoucherShipping?: string
-  ) => {
-    try {
-      const response = await api.getShippingFeeByAddress(
-        userId,
-        addressId,
-        subtotal,
-        idVoucherDiscount,
-        idVoucherShipping
-      );
-      setFinalShippingFee(response.final_shipping_fee || response.shipping_fee || 0);
-      setShippingDiscount(response.shipping_discount || 0);
-      setFinalSubtotal(response.final_subtotal || subtotal);
-      setDiscountAmount(response.discount_amount || 0);
-      setTotalAmount(response.total || (response.final_subtotal + response.final_shipping_fee));
-
-      if (response.discount_voucher_error) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi Voucher Giảm Giá",
-          description: response.discount_voucher_error,
-        });
-      }
-      if (response.shipping_voucher_error) {
-        toast({
-          variant: "destructive",
-          title: "Lỗi Voucher Vận Chuyển",
-          description: response.shipping_voucher_error,
-        });
-      }
-    } catch (error) {
-      console.error('Lỗi khi tính phí vận chuyển:', error);
-      setFinalShippingFee(0);
-      setShippingDiscount(0);
-      setFinalSubtotal(subtotal);
-      setDiscountAmount(0);
-      setTotalAmount(subtotal);
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể tính phí vận chuyển",
-      });
-    }
-  }, [toast]);
-
-  // Tính phí vận chuyển khi có địa chỉ mặc định hoặc voucher thay đổi
   useEffect(() => {
     if (defaultAddress && user?.id) {
-      calculateShippingFeeByAddress(
-        user.id,
-        defaultAddress.id,
-        subtotal,
-        idVoucherDiscount,
-        idVoucherShipping
-      );
+      api.getShippingFeeByAddress(user.id, defaultAddress.id, subtotal, idVoucherDiscount, idVoucherShipping)
+        .then((res) => {
+          setFinalShippingFee(res.final_shipping_fee || 0);
+          setShippingDiscount(res.shipping_discount || 0);
+          setFinalSubtotal(res.final_subtotal || subtotal);
+          setDiscountAmount(res.discount_amount || 0);
+          setTotalAmount((res.final_subtotal + res.final_shipping_fee - gpDiscountAmount) || subtotal);
+        })
+        .catch(err => console.error(err));
     }
-  }, [defaultAddress, user?.id, subtotal, idVoucherDiscount, idVoucherShipping, calculateShippingFeeByAddress]);
+  }, [defaultAddress, idVoucherDiscount, idVoucherShipping, subtotal, gpDiscountAmount]);
 
-  // Handler cho form input
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const renderOrderSummary = () => (
-    <div className="space-y-2 pt-4">
-      <div className="flex justify-between">
-        <span>Tạm tính</span>
-        <span>
-          {new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-          }).format(subtotal)}
-        </span>
-      </div>
-      {discountAmount > 0 && (
-        <div className="flex justify-between text-green-600">
-          <span>Giảm giá (Voucher)</span>
-          <span>
-            - {new Intl.NumberFormat('vi-VN', {
-              style: 'currency',
-              currency: 'VND'
-            }).format(discountAmount)}
-          </span>
-        </div>
-      )}
-      <div className="flex justify-between">
-        <span>Phí vận chuyển</span>
-        <span>
-          {new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-          }).format(finalShippingFee)}
-        </span>
-      </div>
-      {shippingDiscount > 0 && (
-        <div className="flex justify-between text-green-600">
-          <span>Giảm phí vận chuyển (Voucher)</span>
-          <span>
-            - {new Intl.NumberFormat('vi-VN', {
-              style: 'currency',
-              currency: 'VND'
-            }).format(shippingDiscount)}
-          </span>
-        </div>
-      )}
-      <div className="flex justify-between font-bold pt-4 border-t">
-        <span>Tổng cộng</span>
-        <span className="text-orange-600">
-          {new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-          }).format(totalAmount)}
-        </span>
-      </div>
-    </div>
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isAuthenticated || !user) {
-      toast({
-        variant: "destructive",
-        title: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để tiếp tục thanh toán",
-      });
-      return;
-    }
-    if (!defaultAddress) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Vui lòng chọn địa chỉ nhận hàng",
-      });
-      return;
-    }
+    if (!defaultAddress || !user) return;
     try {
+      await api.useGiftPoints(user.id, usedGP);
       const orderRequest: OrderCreateRequest = {
         nameCustomer: formData.fullName,
         phone: formData.phone,
@@ -268,41 +126,25 @@ export default function CheckoutPage() {
         address: formData.address,
         note: formData.note,
         paymentMethod: formData.paymentMethod,
-        cartItems: cartItems.map(item => ({
-          id: item.itemId,
-          quantity: item.quantity,
-          type: item.itemType.toLowerCase()
-        })),
+        cartItems: cartItems.map(item => ({ id: item.itemId, quantity: item.quantity, type: item.itemType.toLowerCase() })),
         totalAmount: totalAmount,
         shippingFee: finalShippingFee,
         idVoucherDiscount: idVoucherDiscount ? parseInt(idVoucherDiscount) : undefined,
         idVoucherShipping: idVoucherShipping ? parseInt(idVoucherShipping) : undefined
       };
-      const response = await api.createOrder(orderRequest);
+      const res = await api.createOrder(orderRequest);
       if (formData.paymentMethod === 'BANKING') {
-        const vietQRUrl = `https://img.vietqr.io/image/mbbank-0565251240-compact2.jpg?amount=${totalAmount}&addInfo=GARANCUCTAC${response.data.id}&accountName=TRAN%20TAN%20KHAI`;
-        router.push(`/payment?orderId=${response.data.id}&qrCode=${encodeURIComponent(vietQRUrl)}&amount=${totalAmount}`);
+        const vietQRUrl = `https://img.vietqr.io/image/mbbank-0565251240-compact2.jpg?amount=${totalAmount}&addInfo=GARANCUCTAC${res.data.id}&accountName=TRAN%20TAN%20KHAI`;
+        router.push(`/payment?orderId=${res.data.id}&qrCode=${encodeURIComponent(vietQRUrl)}&amount=${totalAmount}`);
       } else {
         clearCart();
-        toast({
-          title: "Đặt hàng thành công",
-          description: "Cảm ơn bạn đã đặt hàng!",
-        });
+        toast({ title: "Đặt hàng thành công", description: "Cảm ơn bạn đã đặt hàng!" });
         router.push('/');
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Có lỗi xảy ra khi đặt hàng",
-      });
+      toast({ variant: "destructive", title: "Lỗi", description: "Có lỗi khi đặt hàng" });
     }
   };
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -310,240 +152,52 @@ export default function CheckoutPage() {
       <main className="py-8 pt-24">
         <div className="container mx-auto px-4">
           <h1 className="text-2xl font-bold mb-8">Thanh toán</h1>
-          {cartItems.length === 0 ? (
-            <div className="text-center py-12">
-              <h2 className="text-xl font-semibold mb-4">Giỏ hàng trống</h2>
-              <p className="text-gray-600 mb-6">
-                Bạn chưa có sản phẩm nào trong giỏ hàng
-              </p>
-              <Link href="/menu">
-                <Button>Tiếp tục mua sắm</Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <form onSubmit={handleSubmit}>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="fullName">Họ và tên</Label>
-                      <Input
-                        id="fullName"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Số điện thoại</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="note">Ghi chú</Label>
-                      <Textarea
-                        id="note"
-                        name="note"
-                        value={formData.note}
-                        onChange={handleInputChange}
-                        placeholder="Ghi chú về đơn hàng, ví dụ: thời gian hay chỉ dẫn địa điểm giao hàng chi tiết hơn."
-                      />
-                    </div>
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-medium text-gray-700 mb-1 inline-block">
-                        Địa chỉ nhận hàng
-                      </Label>
-                      {isLoadingAddress ? (
-                        <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-md">
-                          <Loader2 className="animate-spin h-5 w-5 text-gray-500" />
-                          <p className="text-sm text-gray-500">Đang tải địa chỉ...</p>
-                        </div>
-                      ) : defaultAddress ? (
-                        <div className="p-3 bg-orange-50 rounded-md border border-orange-300">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-semibold">{defaultAddress.detail}</p>
-                              <p className="text-sm text-gray-700">
-                                {defaultAddress.wardName}, {defaultAddress.districtName}, {defaultAddress.provinceName}
-                              </p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="link"
-                              className="text-blue-600 p-0 h-auto"
-                              onClick={() => setShowAddressDialog(true)}
-                            >
-                              Thay đổi
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-red-500">Chưa có địa chỉ nhận hàng</p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowAddressDialog(true)}
-                          >
-                            Chọn địa chỉ
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mb-6">
-                      <Label className="block mb-2">Chọn Voucher</Label>
-                      <VoucherSelector
-                        subtotal={subtotal}
-                        onSelect={(voucher) => {
-                          setSelectedVoucher(voucher);
-                          toast({
-                            title: "Đã chọn voucher",
-                            description: voucher.discount?.description || voucher.shipping?.description || "Đã áp dụng voucher",
-                          });
-                        }}
-                        onIdChange={({ idVoucherDiscount, idVoucherShipping }) => {
-                          setIdVoucherDiscount(idVoucherDiscount);
-                          setIdVoucherShipping(idVoucherShipping);
-                        }}
-                      />
-                      {selectedVoucher.discount && (
-                        <div className="text-sm text-green-700">
-                          Đã chọn: <strong>{selectedVoucher.discount.code}</strong> - {selectedVoucher.discount.description}
-                        </div>
-                      )}
-                      {selectedVoucher.shipping && (
-                        <div className="text-sm text-green-700">
-                          Đã chọn: <strong>{selectedVoucher.shipping.code}</strong> - {selectedVoucher.shipping.description}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <Label>Phương thức thanh toán</Label>
-                      <RadioGroup
-                        defaultValue="COD"
-                        name="paymentMethod"
-                        className="mt-2"
-                        onValueChange={(value) =>
-                          setFormData(prev => ({ ...prev, paymentMethod: value }))
-                        }
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="COD" id="cod" />
-                          <Label htmlFor="cod">Thanh toán khi nhận hàng (COD)</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="BANKING" id="banking" />
-                          <Label htmlFor="banking">Chuyển khoản ngân hàng</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full mt-6" disabled={isLoadingAddress || !defaultAddress}>
-                    {isLoadingAddress ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Đang xử lý...
-                      </>
-                    ) : (
-                      "Đặt hàng"
-                    )}
-                  </Button>
-                </form>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-lg shadow space-y-4">
+              <Input name="fullName" placeholder="Họ và tên" value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} required />
+              <Input name="phone" placeholder="Số điện thoại" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} required />
+              <Textarea name="note" placeholder="Ghi chú" value={formData.note} onChange={e => setFormData({ ...formData, note: e.target.value })} />
+              <div>
+                <Label htmlFor="usedGP">Dùng GP để giảm giá (100GP = 10.000đ)</Label>
+                <Input id="usedGP" type="number" value={usedGP} onChange={handleUseGP} min={0} step={100} max={userPoints} />
+                <p className="text-sm text-gray-500">Bạn đang có {userPoints} GP</p>
               </div>
-              {/* Order Summary Section */}
-              <div className="bg-white p-6 rounded-lg shadow h-fit">
-                <h2 className="text-xl font-semibold mb-4">Đơn hàng của bạn</h2>
-                <div className="space-y-4">
-                  {cartItems.map((item: CartItem) => (
-                    <div key={`${item.itemType}-${item.itemId}`} className="flex space-x-4 border-b pb-4">
-                      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
-                        {item.imageUrl ? (
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="80px"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                            No image
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">{item.name}</h3>
-                        <p className="text-sm text-gray-600">Số lượng: {item.quantity}</p>
-                        <p className="font-medium text-orange-600">
-                          {new Intl.NumberFormat('vi-VN', {
-                            style: 'currency',
-                            currency: 'VND'
-                          }).format(item.price * item.quantity)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {renderOrderSummary()}
-                  <div className="mt-6">
-                    <Link href="/giohang">
-                      <Button variant="outline" className="w-full">
-                        Quay lại giỏ hàng
-                      </Button>
-                    </Link>
-                  </div>
+              <VoucherSelector
+                subtotal={subtotal}
+                onSelect={setSelectedVoucher}
+                onIdChange={({ idVoucherDiscount, idVoucherShipping }) => {
+                  setIdVoucherDiscount(idVoucherDiscount);
+                  setIdVoucherShipping(idVoucherShipping);
+                }}
+              />
+             <RadioGroup defaultValue="COD" name="paymentMethod" onValueChange={val => setFormData({ ...formData, paymentMethod: val })}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="COD" id="cod" />
+                  <Label htmlFor="cod">Thanh toán COD</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="BANKING" id="banking" />
+                  <Label htmlFor="banking">Chuyển khoản</Label>
+                </div>
+              </RadioGroup>
+              <Button type="submit" className="w-full mt-4">Đặt hàng</Button>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow h-fit">
+              <h2 className="text-xl font-semibold mb-4">Đơn hàng của bạn</h2>
+              <div className="space-y-2 pt-4">
+                <div className="flex justify-between"><span>Tạm tính</span><span>{subtotal.toLocaleString('vi-VN')}₫</span></div>
+                {discountAmount > 0 && <div className="flex justify-between text-green-600"><span>Giảm giá</span><span>-{discountAmount.toLocaleString('vi-VN')}₫</span></div>}
+                <div className="flex justify-between"><span>Phí vận chuyển</span><span>{finalShippingFee.toLocaleString('vi-VN')}₫</span></div>
+                {shippingDiscount > 0 && <div className="flex justify-between text-green-600"><span>Giảm phí vận chuyển</span><span>-{shippingDiscount.toLocaleString('vi-VN')}₫</span></div>}
+                {usedGP > 0 && <div className="flex justify-between text-green-600"><span>Giảm từ GP ({usedGP})</span><span>-{gpDiscountAmount.toLocaleString('vi-VN')}₫</span></div>}
+                <div className="flex justify-between font-bold border-t pt-2"><span>Tổng cộng</span><span className="text-orange-600">{totalAmount.toLocaleString('vi-VN')}₫</span></div>
               </div>
             </div>
-          )}
+          </form>
         </div>
       </main>
-      {showAddressDialog && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow max-h-[90vh] overflow-y-auto w-[600px]">
-            <h2 className="text-lg font-bold mb-4">Địa Chỉ Của Tôi</h2>
-            {user && (
-              <UserAddressList
-                userId={user.id}
-                isSelecting={true}
-                selectedAddressId={defaultAddress?.id}
-                onSelectAddress={(addr) => {
-                  setDefaultAddress(addr);
-                  setSelectedAddressId(addr.id);
-                  setShowAddressDialog(false);
-                  if (user?.id) {
-                    calculateShippingFeeByAddress(
-                      user.id,
-                      addr.id,
-                      subtotal,
-                      idVoucherDiscount,
-                      idVoucherShipping
-                    );
-                  }
-                }}
-                onRefresh={refreshDefaultAddress}
-              />
-            )}
-            <div className="flex justify-end mt-4">
-              <Button
-                type="button"
-                onClick={() => setShowAddressDialog(false)}
-              >
-                Xác nhận
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
       <Footer />
     </div>
   );
 }
-
