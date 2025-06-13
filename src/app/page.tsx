@@ -11,27 +11,27 @@ import { formatPrice } from '@/config/constants';
 import { Product } from '@/types/product';
 import { useRouter } from 'next/navigation'; 
 import { useCart } from '@/contexts/CartContext';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { api } from '@/services/api'; // Import API service
-import { Combo, ComboProduct } from '@/types/combo'; // Import Combo types
-import { ComboCategory } from '@/types/ComboCategory'; // Import ComboCategory type
+import { api } from '@/services/api';
+import { Combo } from '@/types/combo';
+import { ComboCategory } from '@/types/ComboCategory';
+import { authService } from '@/services/auth.service';
 
 export default function HomePage() {
   const router = useRouter();
   const { products, isLoading, error, refetch } = useProducts();
   const [email, setEmail] = useState('');
   const { addToCart } = useCart();
-  const { toast } = useToast();
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideRef = useRef<HTMLDivElement>(null);
-  const [combos, setCombos] = useState<Combo[]>([]); // State để lưu danh sách combo
-  const [categories, setCategories] = useState<ComboCategory[]>([]); // State để lưu danh mục combo
-  const [loadingCombos, setLoadingCombos] = useState(true); // Trạng thái loading cho combo
+  const [combos, setCombos] = useState<Combo[]>([]);
+  const [categories, setCategories] = useState<ComboCategory[]>([]);
+  const [loadingCombos, setLoadingCombos] = useState(true);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Đăng ký nhận tin thành công với email: ${email}`);
+    toast.success(`Đăng ký nhận tin thành công với email: ${email}`);
     setEmail('');
   };
 
@@ -42,7 +42,6 @@ export default function HomePage() {
 
   const totalSlides = products ? Math.ceil(products.length / 4) : 0;
 
-  // Lấy danh sách combo khi component được mount
   useEffect(() => {
     const fetchCombos = async () => {
       try {
@@ -55,10 +54,8 @@ export default function HomePage() {
         setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching combos:', error);
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải dữ liệu combo. Vui lòng thử lại sau.",
+        toast.error('Không thể tải dữ liệu combo. Vui lòng thử lại sau.', {
+          description: 'Lỗi',
         });
       } finally {
         setLoadingCombos(false);
@@ -66,7 +63,7 @@ export default function HomePage() {
     };
 
     fetchCombos();
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -79,43 +76,49 @@ export default function HomePage() {
   }, [products, totalSlides]);
 
   const handleAddToCart = (product: Product) => {
-    if (!product.isAvailable) {
-      toast({
-        variant: "destructive",
-        title: "Không thể thêm vào giỏ hàng",
-        description: "Sản phẩm hiện không còn hàng",
+    if (!authService.isAuthenticated()) {
+      toast.error('Yêu cầu khách hàng đăng nhập', {
+        description: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.',
       });
       return;
     }
+
+    if (!product.isAvailable) {
+      toast.error('Không thể thêm vào giỏ hàng', {
+        description: 'Sản phẩm hiện không còn hàng',
+      });
+      return;
+    }
+
     addToCart("Product", product.id, 1);
-  
-    toast({
-      title: "Thêm vào giỏ hàng thành công",
-      description: `Đã thêm ${product.name} vào giỏ hàng`,
+    toast.success(`Đã thêm ${product.name} vào giỏ hàng`, {
+      description: 'Thêm vào giỏ hàng thành công',
     });
   };
 
   const handleAddComboToCart = async (combo: Combo) => {
-    if (!combo.isAvailable) {
-      toast({
-        variant: "destructive",
-        title: "Không thể thêm vào giỏ hàng",
-        description: "Combo này hiện không khả dụng",
+    if (!authService.isAuthenticated()) {
+      toast.error('Yêu cầu khách hàng đăng nhập', {
+        description: 'Vui lòng đăng nhập để thêm combo vào giỏ hàng.',
       });
       return;
     }
-  
+
+    if (!combo.isAvailable) {
+      toast.error('Không thể thêm vào giỏ hàng', {
+        description: 'Combo này hiện không khả dụng',
+      });
+      return;
+    }
+
     try {
       await addToCart('Combo', combo.id, 1);
-      toast({
-        title: "Thêm vào giỏ hàng thành công",
-        description: `Đã thêm ${combo.name} vào giỏ hàng`,
+      toast.success(`Đã thêm ${combo.name} vào giỏ hàng`, {
+        description: 'Thêm vào giỏ hàng thành công',
       });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: error.message || "Không thể thêm vào giỏ hàng",
+      toast.error(error.message || 'Không thể thêm vào giỏ hàng', {
+        description: 'Lỗi',
       });
     }
   };
@@ -190,43 +193,29 @@ export default function HomePage() {
                   <p>Không có combo nào để hiển thị.</p>
                 </div>
               ) : (
-                combos.slice(0, 3).map((combo) => ( // Giới hạn tối đa 3 combo
-                  <div key={combo.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    <div className="relative w-full aspect-[4/3] rounded-t-2xl overflow-hidden">
-                    <Image
-                      src={combo.imageUrl || '/images/default-combo.jpg'}
-                      alt={combo.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                combos.slice(0, 3).map((combo) => (
+                  <div key={combo.id} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden flex flex-col">
+                    <div className="relative w-full aspect-[4/3]">
+                      <Image
+                        src={combo.imageUrl || '/images/default-combo.jpg'}
+                        alt={combo.name}
+                        fill
+                        className="object-cover rounded-t-2xl"
+                      />
+                    </div>
 
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold mb-2">{combo.name}</h3>
-                      <p className="text-gray-600 mb-4">{combo.description}</p>
-                      
-                      <div className="space-y-3 mb-4 min-h-[100px]">
-                        {combo.comboProducts && combo.comboProducts.map((product: ComboProduct, index: number) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span>{product.quantity}x {product.productName}</span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="p-6 flex flex-col flex-1">
+                      <h3 className="text-xl font-bold mb-2 text-gray-900">{combo.name}</h3>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{combo.description}</p>
 
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-2xl font-bold text-orange-600">
-                          {new Intl.NumberFormat('vi-VN', {
-                            style: 'currency',
-                            currency: 'VND'
-                          }).format(combo.price)}
+                      <div className="mt-auto flex items-center justify-between">
+                        <span className="text-lg font-bold text-orange-600">
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.price)}
                         </span>
                       </div>
 
                       <Button 
-                        className="w-full bg-black text-white hover:bg-zinc-800"
+                        className="mt-4 w-full bg-black hover:bg-zinc-800 text-white"
                         disabled={!combo.isAvailable}
                         onClick={() => handleAddComboToCart(combo)}
                       >
@@ -237,7 +226,6 @@ export default function HomePage() {
                 ))
               )}
             </div>
-            
           </div>
         </section>
 
@@ -327,7 +315,7 @@ export default function HomePage() {
                                   disabled={!product.isAvailable}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    product.isAvailable && handleAddToCart(product);
+                                    handleAddToCart(product);
                                   }}
                                 >
                                   {product.isAvailable ? 'Thêm vào giỏ' : 'Hết hàng'}

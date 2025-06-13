@@ -979,4 +979,32 @@ getUserAddress: async (userId: number) => {
 },
 
 
+// Thống kê doanh thu theo ngày
+getDailyRevenue: async (fromDate: string, toDate: string) => {
+  const response = await fetch(`${API_URL}/Dashboard/daily-revenue?fromDate=${fromDate}&toDate=${toDate}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy dữ liệu doanh thu theo ngày');
+  return response.json();
+},
+
+// Sản phẩm bán chạy
+getBestSellingProducts: async (fromDate: string, toDate: string) => {
+  const response = await fetch(`${API_URL}/Dashboard/best-selling-items?fromDate=${fromDate}&toDate=${toDate}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy sản phẩm bán chạy');
+  return response.json();
+},
+
+// Trạng thái đơn hàng
+getOrderStatusStatistics: async (fromDate: string, toDate: string) => {
+  const response = await fetch(`${API_URL}/Dashboard/order-status-statistics?fromDate=${fromDate}&toDate=${toDate}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thống kê trạng thái đơn hàng');
+  return response.json();
+},
+
+
 };

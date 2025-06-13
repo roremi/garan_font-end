@@ -85,7 +85,6 @@ export default function AdminLogin() {
           email: userProfile.email,
           fullName: userProfile.fullName,
           phoneNumber: userProfile.phoneNumber,
-          address: userProfile.address,
           role: Number(userProfile.role)
         });
         

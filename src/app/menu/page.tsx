@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,10 @@ import { api } from '@/services/api';
 import { Product } from '@/types/product';
 import { Category } from '@/types/Category';
 import Image from 'next/image';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from 'sonner';
 import { useCart } from '@/contexts/CartContext';
 import { useRouter } from 'next/navigation';
+import { authService } from '@/services/auth.service';
 
 // Components
 const ProductSkeleton = () => (
@@ -104,7 +106,6 @@ export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -120,10 +121,8 @@ export default function MenuPage() {
         setProducts(productsData);
       } catch (error) {
         console.error('Error fetching data:', error);
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải dữ liệu. Vui lòng thử lại sau.",
+        toast.error('Không thể tải dữ liệu. Vui lòng thử lại sau.', {
+          description: 'Lỗi',
         });
       } finally {
         setLoading(false);
@@ -131,7 +130,7 @@ export default function MenuPage() {
     };
 
     fetchData();
-  }, [toast]);
+  }, []);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
@@ -143,20 +142,24 @@ export default function MenuPage() {
   }, [products, categories, selectedCategory, searchQuery]);
 
   const handleAddToCart = (product: Product) => {
+    if (!authService.isAuthenticated()) {
+      toast.error('Yêu cầu khách hàng đăng nhập', {
+        description: 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.',
+      });
+      return;
+    }
+
     if (!product.isAvailable) {
-      toast({
-        variant: "destructive",
-        title: "Không thể thêm vào giỏ hàng",
-        description: "Sản phẩm hiện không còn hàng",
+      toast.error('Không thể thêm vào giỏ hàng', {
+        description: 'Sản phẩm hiện không còn hàng',
       });
       return;
     }
   
     addToCart("Product", product.id, 1);
   
-    toast({
-      title: "Thêm vào giỏ hàng thành công",
-      description: `Đã thêm ${product.name} vào giỏ hàng`,
+    toast.success(`Đã thêm ${product.name} vào giỏ hàng`, {
+      description: 'Thêm vào giỏ hàng thành công',
     });
   };
 
