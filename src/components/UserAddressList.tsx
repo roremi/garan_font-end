@@ -1,10 +1,11 @@
-"use client"
-import { useEffect, useState, useCallback } from "react";
-import { authService } from '@/services/auth.service';
-import { api } from '@/services/api';
+"use client";
+
+// Phần 1: Import các thư viện và components cần thiết
+import { useEffect, useState, useRef, useCallback } from "react";
+import { authService } from "@/services/auth.service";
+import { api } from "@/services/api";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
-import { UserAddress } from "@/types/useraddress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,495 +16,543 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import React from "react";
+import { UserAddress } from "@/types/useraddress";
 
-// Timeout mặc định cho các cuộc gọi API (5 giây)
+
+// Phần 2: Định nghĩa types và interfaces cho dữ liệu địa chỉ
+declare global {
+  interface Window {
+    initMap: () => void;
+  }
+}
+
+interface District {
+  code: number;
+  name: string;
+}
+
+interface Ward {
+  code: number;
+  name: string;
+}
+
+interface UserAddressListProps {
+  userId: number;
+  onRefresh?: () => void;
+  isSelecting?: boolean;
+  onSelectAddress?: (addr: UserAddress) => void;
+  selectedAddressId?: number;
+}
+
+// Phần 3: Hằng số và hàm tiện ích để xử lý timeout API
 const API_TIMEOUT = 5000;
 
-// Hàm hỗ trợ để thêm timeout cho các promise
 const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
   const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+    setTimeout(() => reject(new Error("Yêu cầu hết thời gian")), timeoutMs);
   });
   return Promise.race([promise, timeout]);
 };
 
+// Phần 4: Component MapContainer để hiển thị Google Maps
+const MapContainer = React.memo(({ mapId }: { mapId: string }) => (
+  <div id="map-container" style={{ position: "relative", height: "400px", width: "100%" }}>
+    <div id={mapId} style={{ height: "100%", width: "100%" }} />
+    <img
+      id="centerMarker"
+      src="https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png"
+      alt="marker"
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -100%)",
+        zIndex: 999,
+        pointerEvents: "none",
+        height: "40px",
+        width: "20px",
+      }}
+    />
+  </div>
+));
+
+// Phần 5: Component chính để quản lý danh sách địa chỉ người dùng
 export default function UserAddressList({
   userId,
   onRefresh,
   isSelecting = false,
   onSelectAddress,
   selectedAddressId,
-}: {
-  userId: number;
-  onRefresh?: () => void;
-  isSelecting?: boolean;
-  onSelectAddress?: (addr: UserAddress) => void;
-  selectedAddressId?: number;
-}) {
+}: UserAddressListProps) {
+  // Phần 6: Quản lý state cho danh sách địa chỉ, dialog và dữ liệu form
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [openUpdateDialog, setOpenUpdateDialog] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null);
-
-  // States cho địa chỉ mới hoặc cập nhật
+  const [isUpdatingDefault, setIsUpdatingDefault] = useState(false);
   const [provinces, setProvinces] = useState<any[]>([]);
-  const [districts, setDistricts] = useState<any[]>([]);
-  const [wards, setWards] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<number | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
-  const [selectedWard, setSelectedWard] = useState<string>('');
-  const [addressDetail, setAddressDetail] = useState<string>('');
+  const [selectedWard, setSelectedWard] = useState<number | null>(null);
+  const [addressDetail, setAddressDetail] = useState<string>("");
   const [isDefault, setIsDefault] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isLoadingDistricts, setIsLoadingDistricts] = useState<boolean>(false);
   const [isLoadingWards, setIsLoadingWards] = useState<boolean>(false);
-  const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [canShowMap, setCanShowMap] = useState(false);
+  const googleMapRef = useRef<google.maps.Map | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const listenersRef = useRef<{
+    dragend: google.maps.MapsEventListener | null;
+    zoom_changed: google.maps.MapsEventListener | null;
+  }>({
+    dragend: null,
+    zoom_changed: null,
+  });
 
-  // Kiểm tra cache trong localStorage cho provinces
-  const loadCachedProvinces = useCallback(() => {
-    const cached = localStorage.getItem('provincesData');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      // Kiểm tra thời gian cache (ví dụ: 24 giờ)
-      const cacheTime = parsed.timestamp;
-      if (Date.now() - cacheTime < 24 * 60 * 60 * 1000) {
-        setProvinces(parsed.data);
-        const hcmCity = parsed.data.find((province: any) =>
-          province.ProvinceName.includes('Hồ Chí Minh')
-        );
-        if (hcmCity) {
-          setSelectedProvince(hcmCity.ProvinceID);
-          loadCachedDistricts(hcmCity.ProvinceID);
-        }
-        return true;
-      }
-    }
-    return false;
-  }, []);
+  // Phần 7: Hàm tiện ích để parse dữ liệu API
+  const parseApiJson = async (apiCall: Promise<any>) => {
+    const res = await withTimeout(apiCall, API_TIMEOUT);
+    return Array.isArray(res) ? res : res?.data || [];
+  };
 
-  const loadCachedDistricts = useCallback((provinceId: number) => {
-    const cached = localStorage.getItem(`districts_${provinceId}`);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      const cacheTime = parsed.timestamp;
-      if (Date.now() - cacheTime < 24 * 60 * 60 * 1000) {
-        setDistricts(parsed.data);
-        return true;
-      }
-    }
-    return false;
-  }, []);
-
-  // Tải danh sách địa chỉ của người dùng
-  const refreshAddresses = useCallback(async () => {
-    setLoading(true);
-    setLoadingError(null);
-    try {
-      const data = await withTimeout(
-        authService.getUserFormattedAddresses(userId),
-        API_TIMEOUT
-      );
-      setAddresses(data);
-    } catch (err) {
-      setLoadingError("Không thể tải địa chỉ người dùng. Vui lòng thử lại.");
-      toast.error("Không thể tải địa chỉ người dùng.");
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    refreshAddresses();
-  }, [refreshAddresses]);
-
-  // Tải danh sách tỉnh
+  // Phần 8: Hàm gọi API để tải danh sách tỉnh, quận, phường
   const loadProvinces = useCallback(async () => {
-    if (provinces.length > 0) return;
-    if (loadCachedProvinces()) return;
     try {
-      const response = await withTimeout(api.getProvince(), API_TIMEOUT);
-      if (Array.isArray(response['data'])) {
-        const hcmCity = response['data'].find(province =>
-          province.ProvinceName.includes('Hồ Chí Minh')
-        );
-        if (hcmCity) {
-          setProvinces([hcmCity]);
-          setSelectedProvince(hcmCity.ProvinceID);
-          // Lưu vào cache
-          localStorage.setItem('provincesData', JSON.stringify({
-            data: [hcmCity],
-            timestamp: Date.now()
-          }));
-          loadDistricts(hcmCity.ProvinceID);
-        }
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy danh sách tỉnh:', error);
-      toast.error("Không thể lấy danh sách tỉnh thành");
-      setLoadingError("Không thể tải dữ liệu tỉnh thành. Vui lòng thử lại.");
+      const data = await parseApiJson(api.getProvince());
+      setProvinces(data);
+      return data;
+    } catch {
+      toast.error("Không thể tải danh sách tỉnh/thành phố");
+      return [];
     }
-  }, [provinces.length, loadCachedProvinces]);
+  }, []);
 
-  // Tải danh sách quận
   const loadDistricts = useCallback(async (provinceId: number) => {
     setIsLoadingDistricts(true);
-    if (loadCachedDistricts(provinceId)) {
-      setIsLoadingDistricts(false);
-      return;
-    }
     try {
-      const response = await withTimeout(api.getDistricts(provinceId), API_TIMEOUT);
-      if (Array.isArray(response['data'])) {
-        setDistricts(response['data']);
-        setSelectedDistrict(null);
-        setWards([]);
-        setSelectedWard('');
-        // Lưu vào cache
-        localStorage.setItem(`districts_${provinceId}`, JSON.stringify({
-          data: response['data'],
-          timestamp: Date.now()
-        }));
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy danh sách quận:', error);
-      toast.error("Không thể lấy danh sách Quận/Huyện");
+      const data = (await parseApiJson(api.getDistricts(provinceId))) as District[];
+      setDistricts(data);
+      setWards([]);
+      setSelectedDistrict(null);
+      setSelectedWard(null);
+      return data;
+    } catch {
+      toast.error("Không thể tải danh sách quận/huyện");
+      return [];
     } finally {
       setIsLoadingDistricts(false);
     }
-  }, [loadCachedDistricts]);
+  }, []);
 
-  // Tải danh sách phường
-  const handleDistrictChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const districtId = parseInt(e.target.value);
-    setSelectedDistrict(districtId);
+  const loadWards = useCallback(async (districtId: number) => {
     setIsLoadingWards(true);
     try {
-      const response = await withTimeout(api.getWards(districtId), API_TIMEOUT);
-      if (Array.isArray(response['data'])) {
-        setWards(response['data']);
-        setSelectedWard('');
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy danh sách Phường/Xã:', error);
-      toast.error("Không thể lấy danh sách Phường/Xã");
+      const data = (await parseApiJson(api.getWards(districtId))) as Ward[];
+      setWards(data);
+      setSelectedWard(null);
+      return data;
+    } catch {
+      toast.error("Không thể tải danh sách phường/xã");
+      return [];
     } finally {
       setIsLoadingWards(false);
     }
   }, []);
 
-  const handleWardChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedWard(e.target.value);
-  }, []);
+  const refreshAddresses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await withTimeout(authService.getUserFormattedAddresses(userId), API_TIMEOUT);
+      setAddresses(data);
+    } catch {
+      toast.error("Không thể tải địa chỉ người dùng");
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
-  // Mở dialog cập nhật với dữ liệu địa chỉ hiện tại
-  const handleOpenUpdateDialog = useCallback(async (address: UserAddress) => {
-    setSelectedAddress(address);
-    setAddressDetail(address.detail);
-    setIsDefault(address.isDefault);
+  // Phần 9: Xử lý tải và khởi tạo Google Maps
+  useEffect(() => {
+    const loadMapScript = async (mapId: string) => {
+      try {
+        const { key } = await api.getGoogleMapsApiKey();
+        if (!key) {
+          toast.error("API key Google Maps chưa được cấu hình.");
+          return;
+        }
+
+        if (!document.getElementById("google-maps-script")) {
+          const script = document.createElement("script");
+          script.id = "google-maps-script";
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
+          script.async = true;
+          script.defer = true;
+          script.onload = () => waitForMapElement(mapId, () => initMap(mapId));
+          document.head.appendChild(script);
+        } else {
+          waitForMapElement(mapId, () => initMap(mapId));
+        }
+      } catch (error) {
+        toast.error("Không thể tải bản đồ.");
+      }
+    };
+
+    const waitForMapElement = (mapId: string, callback: () => void) => {
+      const check = () => {
+        const el = document.getElementById(mapId);
+        if (el) {
+          callback();
+        } else {
+          frameRef.current = requestAnimationFrame(check);
+        }
+      };
+      frameRef.current = requestAnimationFrame(check);
+    };
+
+    const initMap = (mapId: string) => {
+      const el = document.getElementById(mapId);
+      if (!el || googleMapRef.current) return;
+
+      const center = { lat: latitude || 10.776, lng: longitude || 106.701 }; // Mặc định tại TP.HCM
+      const map = new google.maps.Map(el, {
+        center,
+        zoom: 14,
+      });
+
+      googleMapRef.current = map;
+
+      listenersRef.current.dragend = map.addListener("dragend", () => {
+        const c = map.getCenter();
+        if (c) {
+          setLatitude(c.lat());
+          setLongitude(c.lng());
+        }
+      });
+
+      listenersRef.current.zoom_changed = map.addListener("zoom_changed", () => {
+        const zoomLevel = map.getZoom();
+        console.log("Zoom level:", zoomLevel);
+      });
+    };
+
+    if ((openDialog || openUpdateDialog) && canShowMap) {
+      loadMapScript(openDialog ? "map-add" : "map-update");
+    }
+
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      if (listenersRef.current.dragend) google.maps.event.removeListener(listenersRef.current.dragend);
+      if (listenersRef.current.zoom_changed) google.maps.event.removeListener(listenersRef.current.zoom_changed);
+      googleMapRef.current = null;
+    };
+  }, [openDialog, openUpdateDialog, canShowMap]);
+
+  useEffect(() => {
+    if (googleMapRef.current && latitude && longitude) {
+      googleMapRef.current.setCenter({ lat: latitude, lng: longitude });
+    }
+  }, [latitude, longitude]);
+
+  // Phần 10: Hàm geocoding để lấy tọa độ từ địa chỉ
+  const geocodeAddress = async (fullAddress: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const { key } = await api.getGoogleMapsApiKey();
+      const encoded = encodeURIComponent(fullAddress);
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encoded}&key=${key}`);
+      const data = await response.json();
+      if (data.status === "OK" && data.results.length > 0) {
+        const loc = data.results[0].geometry.location;
+        return { lat: loc.lat, lng: loc.lng };
+      }
+      console.warn("Geocoding không tìm thấy vị trí:", fullAddress);
+      return null;
+    } catch (error) {
+      console.error("Lỗi geocoding:", error);
+      return null;
+    }
+  };
+
+  // Phần 11: Xử lý sự kiện thay đổi form
+  const handleProvinceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value);
+    setSelectedProvince(id);
+    setLatitude(null);
+    setLongitude(null);
+    setCanShowMap(false);
+    await loadDistricts(id);
+  };
+
+  const handleDistrictChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value);
+    setSelectedDistrict(id);
+    setLatitude(null);
+    setLongitude(null);
+    setCanShowMap(false);
+    await loadWards(id);
+  };
+
+  const handleWardChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value);
+    setSelectedWard(id);
+    setLatitude(null);
+    setLongitude(null);
+    setCanShowMap(false);
+  };
+
+  const resetForm = useCallback(() => {
+    setAddressDetail("");
     setSelectedProvince(null);
     setSelectedDistrict(null);
-    setSelectedWard('');
+    setSelectedWard(null);
+    setIsDefault(false);
     setDistricts([]);
     setWards([]);
-
-    try {
-      const response = await withTimeout(api.getProvince(), API_TIMEOUT);
-      if (Array.isArray(response['data'])) {
-        setProvinces(response['data']);
-        const matchedProvince = response['data'].find(
-          (p: any) => p.ProvinceName === address.provinceName
-        );
-        if (matchedProvince) {
-          setSelectedProvince(matchedProvince.ProvinceID);
-          const districtResponse = await withTimeout(api.getDistricts(matchedProvince.ProvinceID), API_TIMEOUT);
-          if (Array.isArray(districtResponse['data'])) {
-            setDistricts(districtResponse['data']);
-            const matchedDistrict = districtResponse['data'].find(
-              (d: any) => d.DistrictName === address.districtName
-            );
-            if (matchedDistrict) {
-              setSelectedDistrict(matchedDistrict.DistrictID);
-              const wardResponse = await withTimeout(api.getWards(matchedDistrict.DistrictID), API_TIMEOUT);
-              if (Array.isArray(wardResponse['data'])) {
-                setWards(wardResponse['data']);
-                const matchedWard = wardResponse['data'].find(
-                  (w: any) => w.WardName === address.wardName
-                );
-                if (matchedWard) {
-                  setSelectedWard(matchedWard.WardCode);
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy thông tin tỉnh/quận/phường:', error);
-      toast.error("Không thể tải thông tin địa chỉ");
-    }
-    setOpenUpdateDialog(true);
-  }, []);
-
-  // Reset form
-  const resetForm = useCallback(() => {
-    setAddressDetail('');
-    // Không reset selectedProvince để giữ mặc định HCM
-    setSelectedDistrict(null);
-    setSelectedWard('');
-    setIsDefault(false);
     setSelectedAddress(null);
+    setCanShowMap(false);
+    setLatitude(null);
+    setLongitude(null);
   }, []);
-  
 
-  // Lưu địa chỉ mới
-  const handleSaveAddress = useCallback(async () => {
-    if (!addressDetail) {
-      toast.error("Vui lòng nhập chi tiết địa chỉ (số nhà, tên đường)");
+  // Phần 12: Xử lý các hành động thêm, cập nhật, xóa địa chỉ
+  const handleOpenAddDialog = () => {
+    resetForm();
+    setSelectedProvince(79);
+    loadDistricts(79);
+    setOpenDialog(true);
+  };
+
+  const handleSaveAddress = async () => {
+    if (!addressDetail || !selectedProvince || !selectedDistrict || !selectedWard) {
+      toast.error("Vui lòng nhập đầy đủ thông tin địa chỉ");
       return;
     }
-    if (!selectedProvince) {
-      toast.error("Vui lòng chọn Tỉnh/Thành phố");
-      return;
-    }
-    if (!selectedDistrict) {
-      toast.error("Vui lòng chọn Quận/Huyện");
-      return;
-    }
-    if (!selectedWard) {
-      toast.error("Vui lòng chọn Phường/Xã");
-      return;
-    }
+
+    const province = provinces.find((p) => p.code === selectedProvince);
+    const district = districts.find((d) => d.code === selectedDistrict);
+    const ward = wards.find((w) => w.code === selectedWard);
+
+    const newAddress = {
+      UserId: userId,
+      Detail: addressDetail,
+      ProvinceName: province?.name || "",
+      DistrictName: district?.name || "",
+      WardName: ward?.name || "",
+      Latitude: latitude || 0,
+      Longitude: longitude || 0,
+      IsDefault: isDefault,
+    };
+
     setIsSaving(true);
     try {
-      const newAddress = {
-        UserId: userId,
-        Detail: addressDetail,
-        ProvinceId: selectedProvince,
-        DistrictId: selectedDistrict,
-        WardCode: selectedWard,
-        IsDefault: isDefault
-      };
       await withTimeout(authService.addUserAddress(userId, newAddress), API_TIMEOUT);
+      toast.success("Đã thêm địa chỉ");
       await refreshAddresses();
       if (onRefresh) onRefresh();
-      toast.success("Thêm địa chỉ thành công");
       setOpenDialog(false);
       resetForm();
-    } catch (error) {
-      console.error('Lỗi khi lưu địa chỉ:', error);
-      toast.error("Không thể lưu địa chỉ");
+    } catch {
+      toast.error("Lỗi khi thêm địa chỉ");
     } finally {
       setIsSaving(false);
     }
-  }, [addressDetail, selectedProvince, selectedDistrict, selectedWard, isDefault, userId, refreshAddresses, onRefresh, resetForm]);
-  
-  // Cập nhật địa chỉ
-  const handleUpdateAddress = useCallback(async () => {
+  };
+
+  const handleUpdateAddress = async () => {
     if (!addressDetail || !selectedProvince || !selectedDistrict || !selectedWard || !selectedAddress) {
       toast.error("Vui lòng nhập đầy đủ thông tin địa chỉ");
       return;
     }
+
+    const province = provinces.find((p) => p.code === selectedProvince);
+    const district = districts.find((d) => d.code === selectedDistrict);
+    const ward = wards.find((w) => w.code === selectedWard);
+
+    const updatedAddress = {
+      UserId: userId,
+      Detail: addressDetail,
+      ProvinceName: province?.name || "",
+      DistrictName: district?.name || "",
+      WardName: ward?.name || "",
+      Latitude: latitude || 0,
+      Longitude: longitude || 0,
+      IsDefault: isDefault,
+    };
+
     setIsSaving(true);
     try {
-      const updatedAddress = {
-        UserId: userId,
-        Detail: addressDetail,
-        ProvinceId: selectedProvince,
-        DistrictId: selectedDistrict,
-        WardCode: selectedWard,
-        IsDefault: isDefault
-      };
       await withTimeout(authService.updateUserAddress(userId, selectedAddress.id, updatedAddress), API_TIMEOUT);
+      toast.success("Cập nhật địa chỉ thành công");
       await refreshAddresses();
       if (onRefresh) onRefresh();
-      toast.success("Cập nhật địa chỉ thành công");
       setOpenUpdateDialog(false);
       resetForm();
-    } catch (error) {
-      console.error('Lỗi khi cập nhật địa chỉ:', error);
-      toast.error("Không thể cập nhật địa chỉ");
+    } catch {
+      toast.error("Lỗi khi cập nhật địa chỉ");
     } finally {
       setIsSaving(false);
     }
-  }, [addressDetail, selectedProvince, selectedDistrict, selectedWard, isDefault, userId, selectedAddress, refreshAddresses, onRefresh, resetForm]);
+  };
 
-  // Xóa địa chỉ
-  const handleDeleteAddress = useCallback(async () => {
+  const handleDeleteAddress = async () => {
     if (!selectedAddress) return;
     setIsSaving(true);
     try {
       await withTimeout(authService.deleteUserAddress(userId, selectedAddress.id), API_TIMEOUT);
+      toast.success("Xóa địa chỉ thành công");
       await refreshAddresses();
       if (onRefresh) onRefresh();
-      toast.success("Xóa địa chỉ thành công");
       setOpenUpdateDialog(false);
       resetForm();
-    } catch (error) {
-      console.error('Lỗi khi xóa địa chỉ:', error);
-      toast.error("Không thể xóa địa chỉ");
+    } catch {
+      toast.error("Lỗi khi xóa địa chỉ");
     } finally {
       setIsSaving(false);
     }
-  }, [selectedAddress, userId, refreshAddresses, onRefresh, resetForm]);
+  };
 
-  // Thiết lập địa chỉ mặc định
-  const handleSetDefaultAddress = useCallback(async (addressId: number) => {
-    setIsSaving(true);
+  const handleSetDefaultAddress = async (addr: UserAddress) => {
+    if (addr.isDefault || isUpdatingDefault) return;
+
+    setIsUpdatingDefault(true);
     try {
-      await withTimeout(authService.setDefaultAddress(userId, addressId), API_TIMEOUT);
+      await withTimeout(authService.setDefaultAddress(userId, addr.id), API_TIMEOUT);
+      toast.success("Đã đặt địa chỉ mặc định");
       await refreshAddresses();
       if (onRefresh) onRefresh();
-      toast.success("Thiết lập địa chỉ mặc định thành công");
     } catch (error) {
-      console.error('Lỗi khi thiết lập địa chỉ mặc định:', error);
-      toast.error("Không thể thiết lập địa chỉ mặc định");
+      toast.error("Lỗi khi đặt địa chỉ mặc định");
+      console.error("Lỗi khi đặt địa chỉ mặc định:", error);
     } finally {
-      setIsSaving(false);
+      setIsUpdatingDefault(false);
     }
-  }, [userId, refreshAddresses, onRefresh]);
+  };
 
-  // Tải tỉnh khi mở dialog
-  useEffect(() => {
-    if (openDialog) {
-      // Nếu chưa có provinces, tải từ cache hoặc API
-      if (provinces.length === 0) {
-        loadProvinces();
-      } else {
-        // Nếu đã có provinces, đặt selectedProvince mặc định là HCM
-        const hcmCity = provinces.find(province =>
-          province.ProvinceName.includes('Hồ Chí Minh')
-        );
-        if (hcmCity && !selectedProvince) {
-          setSelectedProvince(hcmCity.ProvinceID);
-          loadDistricts(hcmCity.ProvinceID);
+  const handleOpenUpdateDialog = useCallback(
+    async (addr: UserAddress) => {
+      setSelectedAddress(addr);
+      setAddressDetail(addr.detail);
+      setIsDefault(addr.isDefault);
+      setLatitude(addr.latitude || null);
+      setLongitude(addr.longitude || null);
+      setCanShowMap(!!addr.latitude && !!addr.longitude);
+
+      try {
+        let provincesData = provinces;
+        if (provinces.length === 0) {
+          provincesData = await loadProvinces();
         }
-      }
-    }
-  }, [openDialog, loadProvinces, provinces, selectedProvince]);
 
+        const province = provincesData.find((p) => p.name === addr.provinceName);
+        if (province) {
+          setSelectedProvince(province.code);
+          const districtsData = await loadDistricts(province.code);
+          const district = districtsData.find((d) => d.name === addr.districtName);
+          if (district) {
+            setSelectedDistrict(district.code);
+            const wardsData = await loadWards(district.code);
+            const ward = wardsData.find((w) => w.name === addr.wardName);
+            if (ward) {
+              setSelectedWard(ward.code);
+            } else {
+              console.warn(`Không tìm thấy phường/xã: ${addr.wardName}`);
+              setSelectedWard(null);
+            }
+          } else {
+            console.warn(`Không tìm thấy quận/huyện: ${addr.districtName}`);
+            setSelectedDistrict(null);
+          }
+        } else {
+          console.warn(`Không tìm thấy tỉnh/thành phố: ${addr.provinceName}`);
+          setSelectedProvince(null);
+        }
+
+        setOpenUpdateDialog(true);
+      } catch (error) {
+        console.error("Lỗi khi tải thông tin địa chỉ:", error);
+        toast.error("Không thể tải thông tin địa chỉ để cập nhật");
+      }
+    },
+    [provinces, loadProvinces, loadDistricts, loadWards]
+  );
+
+  // Phần 13: Tải dữ liệu ban đầu
+  useEffect(() => {
+    refreshAddresses();
+  }, [refreshAddresses]);
+
+  useEffect(() => {
+    if ((openDialog || openUpdateDialog) && provinces.length === 0) {
+      loadProvinces();
+    }
+  }, [openDialog, openUpdateDialog, loadProvinces]);
+
+  // Phần 14: Render giao diện người dùng
   if (loading) {
     return <Loader2 className="animate-spin text-muted mx-auto mt-4" />;
   }
 
-  if (loadingError && addresses.length === 0) {
-    return (
-      <div className="text-center mt-4 space-y-2">
-        <p className="text-sm text-red-500">{loadingError}</p>
-        <Button
-          variant="outline"
-          onClick={refreshAddresses}
-          className="text-blue-600"
-        >
-          Thử lại
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4 mt-4">
-      <div className="flex justify-start mb-2 -mt-2">
-        <Button
-          variant="default"
-          className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2"
-          onClick={() => setOpenDialog(true)}
-        >
-          <Plus className="w-4 h-4" />
-          Thêm địa chỉ mới
-        </Button>
-      </div>
+    <div className="p-4">
+      <Button
+        onClick={handleOpenAddDialog}
+        className="mb-4 bg-red-500 hover:bg-red-600 text-white flex items-center gap-2"
+      >
+        <Plus className="w-4 h-4" /> Thêm địa chỉ
+      </Button>
 
       {addresses.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center mt-4">Bạn chưa có địa chỉ nào.</p>
       ) : (
         addresses.map((addr) => (
-          <div
-            key={addr.id}
-            className={`p-4 border rounded-md bg-white shadow-sm ${
-              addr.isDefault ? "border-orange-500" : "border-gray-200"
-            }`}
-          >
-            <div className="flex justify-between items-center gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{addr.detail}</p>
-                <p className="text-sm text-muted-foreground">
-                  {addr.wardName}, {addr.districtName}, {addr.provinceName}
-                </p>
-                {addr.isDefault && (
-                  <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold text-orange-700 bg-orange-100 rounded border border-orange-300">
-                    Mặc định
-                  </span>
-                )}
+          <div key={addr.id} className="border p-2 mb-2 rounded relative">
+            <div>{addr.detail}</div>
+            <div>
+              {addr.wardName}, {addr.districtName}, {addr.provinceName}
+            </div>
+            {addr.isDefault && <div className="text-orange-500">[Mặc định]</div>}
+            <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+              <button
+                className="text-sm text-blue-600 hover:underline"
+                onClick={() => handleOpenUpdateDialog(addr)}
+              >
+                Sửa
+              </button>
+              <div className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="defaultAddress"
+                  checked={addr.isDefault}
+                  onChange={() => handleSetDefaultAddress(addr)}
+                  disabled={isUpdatingDefault}
+                  className="h-4 w-4 text-blue-600"
+                />
+                <span className="text-sm text-gray-600"></span>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <Button
-                  variant="outline"
-                  className="text-blue-600 text-sm hover:bg-blue-50"
-                  onClick={() => handleOpenUpdateDialog(addr)}
-                >
-                  Cập nhật
-                </Button>
-                {isSelecting ? (
-                  <input
-                    type="radio"
-                    name="addressRadio"
-                    className="w-5 h-5 text-orange-500"
-                    checked={selectedAddressId === addr.id}
-                    onChange={() => {
-                      setSelectedAddress(addr);
-                      if (onSelectAddress) onSelectAddress(addr);
-                    }}
-                  />
-                ) : (
-                  <Button
-                    variant="outline"
-                    className={`text-gray-800 border-gray-300 px-3 py-1 text-sm ${
-                      addr.isDefault ? "cursor-not-allowed opacity-60 relative" : ""
-                    }`}
-                    disabled={addr.isDefault || isSaving}
-                    onClick={() => handleSetDefaultAddress(addr.id)}
-                  >
-                    Thiết lập mặc định
-                    {addr.isDefault && (
-                      <span
-                        className="absolute top-1/2 -right-6 transform -translate-y-1/2 text-red-500 text-xl"
-                        title="Đây đã là địa chỉ mặc định"
-                      >
-                        ⚠
-                      </span>
-                    )}
-                  </Button>
-                )}
-              </div>
-           
-              </div>
+            </div>
           </div>
         ))
       )}
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Thêm địa chỉ mới</DialogTitle>
+            <DialogTitle>Thêm địa chỉ</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="addressDetail">Chi tiết địa chỉ</Label>
-              <Input
-                id="addressDetail"
-                value={addressDetail}
-                onChange={(e) => setAddressDetail(e.target.value)}
-                placeholder="Số nhà, tên đường"
-                required
-              />
-            </div>
+          <div className="space-y-2">
             <div>
               <Label>Tỉnh/Thành phố</Label>
               <Input
+                className="w-full p-2 border rounded bg-gray-100 text-gray-600"
                 value="Thành phố Hồ Chí Minh"
+                readOnly
                 disabled
-                className="w-full p-2 border rounded bg-gray-50"
               />
             </div>
             <div>
@@ -515,15 +564,14 @@ export default function UserAddressList({
                 </div>
               ) : (
                 <select
-                  className="w-full p-2 border rounded appearance-none bg-white"
+                  className="w-full p-2 border rounded"
                   value={selectedDistrict || ""}
                   onChange={handleDistrictChange}
-                  required
                 >
-                  <option value="">Chọn Quận/Huyện</option>
-                  {districts.map((district) => (
-                    <option key={district.DistrictID} value={district.DistrictID}>
-                      {district.DistrictName}
+                  <option value="">-- chọn quận/huyện --</option>
+                  {districts.map((d: District) => (
+                    <option key={d.code} value={d.code}>
+                      {d.name}
                     </option>
                   ))}
                 </select>
@@ -538,43 +586,94 @@ export default function UserAddressList({
                 </div>
               ) : (
                 <select
-                  className="w-full p-2 border rounded appearance-none bg-white"
-                  value={selectedWard}
+                  className="w-full p-2 border rounded"
+                  value={selectedWard || ""}
                   onChange={handleWardChange}
-                  required
                 >
-                  <option value="">Chọn Phường/Xã</option>
-                  {wards.map((ward) => (
-                    <option key={ward.WardCode} value={ward.WardCode}>
-                      {ward.WardName}
+                  <option value="">-- chọn phường/xã --</option>
+                  {wards.map((w: Ward) => (
+                    <option key={w.code} value={w.code}>
+                      {w.name}
                     </option>
                   ))}
                 </select>
               )}
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={isDefault}
-                onChange={() => setIsDefault(!isDefault)}
-              />
-              <Label>Đặt làm địa chỉ mặc định</Label>
+            <div>
+              <Label>Chi tiết (Số nhà, tên đường)</Label>
+              <div className="flex gap-2">
+                <Input
+                  className="flex-1"
+                  value={addressDetail}
+                  onChange={(e) => setAddressDetail(e.target.value)}
+                  placeholder="VD: 123 Lê Văn Khương"
+                />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!selectedProvince || !selectedDistrict || !selectedWard || !addressDetail) {
+                      toast.error("Vui lòng chọn tỉnh, quận, huyện và phường/xã trước khi tìm kiếm.");
+                      return;
+                    }
+                    const province = provinces.find((p) => p.code === selectedProvince);
+                    const district = districts.find((d) => d.code === selectedDistrict);
+                    const ward = wards.find((w) => w.code === selectedWard);
+
+                    const fullAddress = `${addressDetail}, ${ward?.name}, ${district?.name}, ${province?.name}`;
+                    const location = await geocodeAddress(fullAddress);
+                    if (location) {
+                      setLatitude(location.lat);
+                      setLongitude(location.lng);
+                      setCanShowMap(true);
+                      toast.success("Đã định vị thành công");
+                    } else {
+                      toast.error("Không tìm thấy vị trí phù hợp");
+                    }
+                  }}
+                >
+                  Tìm vị trí
+                </Button>
+              </div>
+            </div>
+            {canShowMap && (
+              <div className="form-group mt-4">
+                <Label>Bản đồ</Label>
+                <MapContainer mapId="map-add" />
+              </div>
+            )}
+            {!canShowMap && (
+              <div
+                className="form-group mt-4"
+                style={{ height: "400px", width: "100%", background: "#f0f4f8", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Button variant="outline" disabled>
+                  <Plus className="w-4 h-4 mr-2" /> Thêm vị trí
+                </Button>
+                <p className="text-sm text-gray-500 mt-2">Loại địa chỉ:</p>
+              </div>
+            )}
+            {/* {canShowMap && (
+              <>
+                <div className="form-group mt-2">
+                  <Label>Vĩ độ</Label>
+                  <Input id="latitude" value={latitude || ""} readOnly />
+                </div>
+                <div className="form-group">
+                  <Label>Kinh độ</Label>
+                  <Input id="longitude" value={longitude || ""} readOnly />
+                </div>
+              </>
+            )} */}
+            <div className="flex items-center">
+              <input type="checkbox" checked={isDefault} onChange={() => setIsDefault(!isDefault)} />
+              <Label className="ml-2">Mặc định</Label>
             </div>
           </div>
-          <DialogFooter className="flex space-x-2 sm:space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpenDialog(false)}
-              disabled={isSaving}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(false)} disabled={isSaving}>
               Hủy
             </Button>
-            <Button
-              type="button"
-              onClick={handleSaveAddress}
-              disabled={isSaving || isLoadingDistricts || isLoadingWards}
-            >
+            <Button onClick={handleSaveAddress} disabled={isSaving || isLoadingDistricts || isLoadingWards}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -589,27 +688,18 @@ export default function UserAddressList({
       </Dialog>
 
       <Dialog open={openUpdateDialog} onOpenChange={setOpenUpdateDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Cập nhật địa chỉ</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="addressDetail">Chi tiết địa chỉ</Label>
-              <Input
-                id="addressDetail"
-                value={addressDetail}
-                onChange={(e) => setAddressDetail(e.target.value)}
-                placeholder="Số nhà, tên đường"
-                required
-              />
-            </div>
+          <div className="space-y-2">
             <div>
               <Label>Tỉnh/Thành phố</Label>
               <Input
+                className="w-full p-2 border rounded bg-gray-100 text-gray-600"
                 value="Thành phố Hồ Chí Minh"
+                readOnly
                 disabled
-                className="w-full p-2 border rounded bg-gray-50"
               />
             </div>
             <div>
@@ -621,15 +711,14 @@ export default function UserAddressList({
                 </div>
               ) : (
                 <select
-                  className="w-full p-2 border rounded appearance-none bg-white"
+                  className="w-full p-2 border rounded"
                   value={selectedDistrict || ""}
                   onChange={handleDistrictChange}
-                  required
                 >
-                  <option value="">Chọn Quận/Huyện</option>
-                  {districts.map((district) => (
-                    <option key={district.DistrictID} value={district.DistrictID}>
-                      {district.DistrictName}
+                  <option value="">-- chọn quận/huyện --</option>
+                  {districts.map((d: District) => (
+                    <option key={d.code} value={d.code}>
+                      {d.name}
                     </option>
                   ))}
                 </select>
@@ -644,40 +733,95 @@ export default function UserAddressList({
                 </div>
               ) : (
                 <select
-                  className="w-full p-2 border rounded appearance-none bg-white"
-                  value={selectedWard}
+                  className="w-full p-2 border rounded"
+                  value={selectedWard || ""}
                   onChange={handleWardChange}
-                  required
                 >
-                  <option value="">Chọn Phường/Xã</option>
-                  {wards.map((ward) => (
-                    <option key={ward.WardCode} value={ward.WardCode}>
-                      {ward.WardName}
+                  <option value="">-- chọn phường/xã --</option>
+                  {wards.map((w: Ward) => (
+                    <option key={w.code} value={w.code}>
+                      {w.name}
                     </option>
                   ))}
                 </select>
               )}
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={isDefault}
-                onChange={() => setIsDefault(!isDefault)}
-              />
-              <Label>Đặt làm địa chỉ mặc định</Label>
+            <div>
+              <Label>Chi tiết (Số nhà, tên đường)</Label>
+              <div className="flex gap-2">
+                <Input
+                  className="flex-1"
+                  value={addressDetail}
+                  onChange={(e) => setAddressDetail(e.target.value)}
+                  placeholder="VD: 123 Lê Văn Khương"
+                />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!selectedProvince || !selectedDistrict || !selectedWard || !addressDetail) {
+                      toast.error("Vui lòng chọn tỉnh, quận, huyện và phường/xã trước khi tìm kiếm.");
+                      return;
+                    }
+                    const province = provinces.find((p) => p.code === selectedProvince);
+                    const district = districts.find((d) => d.code === selectedDistrict);
+                    const ward = wards.find((w) => w.code === selectedWard);
+
+                    const fullAddress = `${addressDetail}, ${ward?.name}, ${district?.name}, ${province?.name}`;
+                    const location = await geocodeAddress(fullAddress);
+                    if (location) {
+                      setLatitude(location.lat);
+                      setLongitude(location.lng);
+                      setCanShowMap(true);
+                      toast.success("Đã định vị thành công");
+                    } else {
+                      toast.error("Không tìm thấy vị trí phù hợp");
+                    }
+                  }}
+                >
+                  Tìm vị trí
+                </Button>
+              </div>
+            </div>
+
+            {canShowMap && (
+              <div className="form-group mt-4">
+                <Label>Bản đồ</Label>
+                <MapContainer mapId="map-update" />
+              </div>
+            )}
+            {!canShowMap && (
+              <div
+                className="form-group mt-4"
+                style={{ height: "400px", width: "100%", background: "#f0f4f8", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Button variant="outline" disabled>
+                  <Plus className="w-4 h-4 mr-2" /> Thêm vị trí
+                </Button>
+                <p className="text-sm text-gray-500 mt-2">Loại địa chỉ:</p>
+              </div>
+            )}
+            {/* {canShowMap && (
+              <>
+                <div className="form-group mt-2">
+                  <Label>Vĩ độ</Label>
+                  <Input id="latitude" value={latitude || ""} readOnly />
+                </div>
+                <div className="form-group">
+                  <Label>Kinh độ</Label>
+                  <Input id="longitude" value={longitude || ""} readOnly />
+                </div>
+              </>
+            )} */}
+            <div className="flex items-center">
+              <input type="checkbox" checked={isDefault} onChange={() => setIsDefault(!isDefault)} />
+              <Label className="ml-2">Mặc định</Label>
             </div>
           </div>
-          <DialogFooter className="flex space-x-2 sm:space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpenUpdateDialog(false)}
-              disabled={isSaving}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenUpdateDialog(false)} disabled={isSaving}>
               Hủy
             </Button>
             <Button
-              type="button"
               variant="destructive"
               onClick={handleDeleteAddress}
               disabled={isSaving || selectedAddress?.isDefault}
@@ -691,11 +835,7 @@ export default function UserAddressList({
                 "Xóa địa chỉ"
               )}
             </Button>
-            <Button
-              type="button"
-              onClick={handleUpdateAddress}
-              disabled={isSaving || isLoadingDistricts || isLoadingWards}
-            >
+            <Button onClick={handleUpdateAddress} disabled={isSaving || isLoadingDistricts || isLoadingWards}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -44,6 +44,8 @@ export interface OrderCreateRequest {
   }[];
   shippingFee: number;
   totalAmount: number;
+  latitude: number;
+  longitude: number;
   // ✅ Thêm hai dòng mới:
   idVoucherDiscount?: number;
   idVoucherShipping?: number;

@@ -1,19 +1,19 @@
 'use client';
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Image from 'next/image';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from 'sonner';
 import { useCart } from '@/contexts/CartContext';
-import { Combo, ComboProduct } from '@/types/combo';
+import { Combo } from '@/types/combo';
 import { ComboCategory } from '@/types/ComboCategory';
 import { api } from '@/services/api';
-import { Loader2 } from 'lucide-react';
+import { authService } from '@/services/auth.service';
 
 export default function CombosPage() {
-  const { toast } = useToast();
   const { addToCart } = useCart();
   const [combos, setCombos] = useState<Combo[]>([]);
   const [categories, setCategories] = useState<ComboCategory[]>([]);
@@ -37,10 +37,8 @@ export default function CombosPage() {
         setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching data:', error);
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải dữ liệu combo. Vui lòng thử lại sau.",
+        toast.error('Không thể tải dữ liệu combo. Vui lòng thử lại sau.', {
+          description: 'Lỗi',
         });
       } finally {
         setLoading(false);
@@ -48,7 +46,7 @@ export default function CombosPage() {
     };
 
     fetchData();
-  }, [toast]);
+  }, []);
 
   // Lọc combo theo tên và danh mục
   const filteredCombos = useMemo(() => {
@@ -79,26 +77,28 @@ export default function CombosPage() {
   };
 
   const handleAddToCart = async (combo: Combo) => {
+    if (!authService.isAuthenticated()) {
+      toast.error('Yêu cầu khách hàng đăng nhập', {
+        description: 'Vui lòng đăng nhập để thêm combo vào giỏ hàng.',
+      });
+      return;
+    }
+
     if (!combo.isAvailable) {
-      toast({
-        variant: "destructive",
-        title: "Không thể thêm vào giỏ hàng",
-        description: "Combo này hiện không khả dụng",
+      toast.error('Không thể thêm vào giỏ hàng', {
+        description: 'Combo này hiện không khả dụng',
       });
       return;
     }
   
     try {
       await addToCart('Combo', combo.id, 1);
-      toast({
-        title: "Thêm vào giỏ hàng thành công",
-        description: `Đã thêm ${combo.name} vào giỏ hàng`,
+      toast.success(`Đã thêm ${combo.name} vào giỏ hàng`, {
+        description: 'Thêm vào giỏ hàng thành công',
       });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: error.message || "Không thể thêm vào giỏ hàng",
+      toast.error(error.message || 'Không thể thêm vào giỏ hàng', {
+        description: 'Lỗi',
       });
     }
   };
@@ -130,12 +130,6 @@ export default function CombosPage() {
             <p className="mt-2 text-gray-600">Tiết kiệm hơn với các combo đặc biệt của chúng tôi</p>
           </div>
         </div>
-        {/* Debug info - Xóa sau khi debug xong
-        <div className="container mx-auto px-4 py-2 text-xs text-gray-500">
-          <p>Danh mục đã chọn: {selectedCategory}</p>
-          <p>Số lượng combo: {combos.length}</p>
-          <p>Số lượng combo đã lọc: {filteredCombos.length}</p>
-        </div> */}
 
         {/* Categories and Search Section */}
         <div className="container mx-auto px-4 py-6">
@@ -173,45 +167,43 @@ export default function CombosPage() {
 
         {/* Combos Grid */}
         <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-  {filteredCombos.map((combo) => (
-    <div key={combo.id} className="bg-white rounded-2xl shadow p-4 flex flex-col h-full">
-      
-      {/* Ảnh combo giữ tỉ lệ và không méo */}
-      <div className="relative w-full aspect-[4/3] mb-4 rounded-lg overflow-hidden">
-        <Image
-          src={combo.imageUrl || '/images/default-combo.jpg'}
-          alt={combo.name}
-          fill
-          className="object-cover"
-        />
-      </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCombos.map((combo) => (
+              <div key={combo.id} className="bg-white rounded-2xl shadow p-4 flex flex-col h-full">
+                {/* Ảnh combo giữ tỉ lệ và không méo */}
+                <div className="relative w-full aspect-[4/3] mb-4 rounded-lg overflow-hidden">
+                  <Image
+                    src={combo.imageUrl || '/images/default-combo.jpg'}
+                    alt={combo.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
 
-      {/* Tiêu đề & Giá */}
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-base font-semibold text-gray-900">{combo.name}</h3>
-        <p className="text-sm font-semibold text-gray-900">
-          {combo.price.toLocaleString()}đ
-        </p>
-      </div>
+                {/* Tiêu đề & Giá */}
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-base font-semibold text-gray-900">{combo.name}</h3>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {combo.price.toLocaleString()}đ
+                  </p>
+                </div>
 
-      {/* Mô tả sản phẩm dạng rút gọn */}
-      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-        {combo.comboProducts?.map(p => `${p.quantity} ${p.productName}`).join(" + ")}
-      </p>
+                {/* Mô tả sản phẩm dạng rút gọn */}
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  {combo.comboProducts?.map(p => `${p.quantity} ${p.productName}`).join(" + ")}
+                </p>
 
-      {/* Nút Thêm */}
-      <Button
-        className="mt-auto w-full bg-black text-white hover:bg-zinc-800 rounded-full py-2"
-        onClick={() => handleAddToCart(combo)}
-        disabled={!combo.isAvailable}
-      >
-        {combo.isAvailable ? 'Thêm' : 'Không khả dụng'}
-      </Button>
-    </div>
-  ))}
-</div>
-
+                {/* Nút Thêm */}
+                <Button
+                  className="mt-auto w-full bg-black text-white hover:bg-zinc-800 rounded-full py-2"
+                  onClick={() => handleAddToCart(combo)}
+                  disabled={!combo.isAvailable}
+                >
+                  {combo.isAvailable ? 'Thêm' : 'Không khả dụng'}
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* No Results Message */}
