@@ -466,7 +466,7 @@ async cancelOrder(orderId: number): Promise<{message: string, status: number}> {
 
   //Location
   getProvince: async () => {
-    const response = await fetch(`${API_URL}/Location/province`, {
+    const response = await fetch(`${API_URL}/Location/provinces`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -481,46 +481,37 @@ async cancelOrder(orderId: number): Promise<{message: string, status: number}> {
     return response.json();
   },
 
-  getDistricts: async (provinceId?: number) => {
-    let url = `${API_URL}/Location/districts`;
-    if (provinceId) {
-      url += `?province_id=${provinceId}`;
-    }
-  
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        accept: '*/*'
-      },
-    });
-  
-    if (!response.ok) {
-      throw new Error('Failed to get districts');
-    }
-  
-    return response.json();
-  },
+  getDistricts: async (provinceId: number) => {
+  const response = await fetch(`${API_URL}/Location/districts/${provinceId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: '*/*'
+    },
+  });
 
-  getWards: async (districtId: number) => {
-    if (!districtId) {
-      throw new Error('District ID is required');
-    }
-  
-    const response = await fetch(`${API_URL}/Location/wards?district_id=${districtId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        accept: '*/*'
-      },
-    });
-  
-    if (!response.ok) {
-      throw new Error('Failed to get wards');
-    }
-  
-    return response.json();
-  },
+  if (!response.ok) {
+    throw new Error('Failed to get districts');
+  }
+
+  return response.json(); // Trả về danh sách districts từ open-api.vn
+},
+
+getWards: async (districtId: number) => {
+  const response = await fetch(`${API_URL}/Location/wards/${districtId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: '*/*'
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get wards');
+  }
+
+  return response.json(); // Trả về danh sách wards từ open-api.vn
+},
 
   // SHIPPING FEE API
   getShippingFee: async (params: {
@@ -594,6 +585,22 @@ getShippingFeeByAddress: async (
 
   return response.json();
 },
+
+calculateShippingFee: async (userId: number, latitude: number, longitude: number) => {
+  const response = await fetch(`${API_URL}/ShipingFee/shipping-fee`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ userId, latitude, longitude }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Không thể tính phí vận chuyển');
+  }
+
+  return response.json(); // Trả về { userId, distanceKm, shippingFee, from, to }
+},
+
 
 
 
@@ -1005,6 +1012,18 @@ getOrderStatusStatistics: async (fromDate: string, toDate: string) => {
   if (!response.ok) throw new Error('Không thể lấy thống kê trạng thái đơn hàng');
   return response.json();
 },
+// Lấy Google Maps API key
+getGoogleMapsApiKey: async () => {
+  const response = await fetch(`${API_URL}/Location/google-maps-api-key`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
 
+  if (!response.ok) {
+    throw new Error('Không thể lấy Google Maps API key');
+  }
+
+  return response.json();
+},
 
 };

@@ -539,9 +539,7 @@ class AuthService {
 
   
   async getUserFormattedAddresses(userId: number): Promise<any> {
-    try {
-      console.log('Fetching addresses for userId:', userId);
-      
+    try {      
       const token = storage.getItem('token');
       if (!token) {
         console.error('Token not found');
@@ -550,9 +548,7 @@ class AuthService {
       
       // Đảm bảo URL đúng với cấu hình backend
       // Lưu ý: URL đúng là /api/UserAddress/by-user/{userId}
-      const url = `${API_URL}/UserAddress/by-user/${userId}`;
-      console.log('Calling API URL:', url);
-      
+      const url = `${API_URL}/UserAddress/by-user/${userId}`;      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -560,10 +556,7 @@ class AuthService {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-      });
-      
-      console.log('Response status:', response.status);
-      
+      });      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
@@ -577,7 +570,6 @@ class AuthService {
       }
       
       const data = await response.json();
-      console.log('Addresses data:', data);
       return data;
     } catch (error) {
       console.error('Error fetching user addresses:', error);
