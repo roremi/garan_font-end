@@ -1,3 +1,4 @@
+// Phần 1: Import các thư viện và component cần thiết
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,34 +23,40 @@ import { api } from '@/services/api';
 import { useToast } from "@/components/ui/use-toast";
 import type { OrderResponse, OrderDetailResponse } from '@/types/order';
 
+// Phần 2: Định nghĩa cấu hình màu sắc và tên trạng thái đơn hàng
 const statusColors = {
   0: 'bg-yellow-100 text-yellow-800',
   1: 'bg-blue-100 text-blue-800',
-  2: 'bg-green-100 text-green-800',
-  3: 'bg-red-100 text-red-800',
+  2: 'bg-blue-100 text-purble-800',
+  3: 'bg-green-100 text-green-800',
+  4: 'bg-red-100 text-red-800',
 };
 
 const statusNames = {
   0: 'Chờ xử lý',
-  1: 'Đã phê duyệt',
-  2: 'Hoàn thành',
-  3: 'Đã hủy',
+  1: 'Đang chờ giao hàng',
+  2: 'Đang giao hàng',
+  3: 'Hoàn thành',
+  4: 'Đã hủy'
 };
 
+// Phần 3: Component chính OrdersPage
 export default function OrdersPage() {
+  // Khai báo state
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('today');
-
   const [viewOrder, setViewOrder] = useState<OrderResponse & { details?: OrderDetailResponse[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const { toast } = useToast();
 
+  // Phần 4: useEffect để lấy danh sách đơn hàng
   useEffect(() => {
     fetchOrders();
   }, []);
 
+  // Phần 5: Hàm lấy danh sách đơn hàng từ API
   const fetchOrders = async () => {
     try {
       const response = await api.getAllOrders();
@@ -68,6 +75,7 @@ export default function OrdersPage() {
     }
   };
 
+  // Phần 6: Hàm xử lý xem chi tiết đơn hàng
   const handleViewOrder = async (order: OrderResponse) => {
     try {
       setViewOrder({ ...order, details: [] }); // Hiển thị modal trước với dữ liệu rỗng
@@ -94,6 +102,7 @@ export default function OrdersPage() {
     }
   };
 
+  // Phần 7: Hàm cập nhật trạng thái đơn hàng
   const handleUpdateStatus = async (orderId: number, newStatus: number) => {
     try {
       const response = await api.confirmOrder(orderId, newStatus);
@@ -114,7 +123,28 @@ export default function OrdersPage() {
       });
     }
   };
+  const handleCancelOrder = async (orderId: number) => {
+    try {
+      const response = await api.CancelOrderbyInternalUser(orderId);
+      if (response.status === 200) {
+        toast({
+          title: "Thành công",
+          description: "Đã hủy đơn hàng",
+        });
+        fetchOrders();
+        setViewOrder(null);
+      }
+    } catch (error) {
+      console.error('Error cancel order status:', error);
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Không thể hủy đơn hàng",
+      });
+    }
+  };
 
+  // Phần 8: Lọc đơn hàng theo trạng thái và ngày
   const filteredOrders = orders.filter(order => {
     if (selectedStatus !== 'all' && order.status !== parseInt(selectedStatus)) return false;
     
@@ -149,6 +179,7 @@ export default function OrdersPage() {
     return true;
   });
 
+  // Phần 9: Render giao diện chính
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -162,9 +193,11 @@ export default function OrdersPage() {
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
               <SelectItem value="0">Chờ xử lý</SelectItem>
-              <SelectItem value="1">Đã phê duyệt</SelectItem>
-              <SelectItem value="2">Hoàn thành</SelectItem>
-              <SelectItem value="3">Đã hủy</SelectItem>
+              <SelectItem value="1">Chờ giao hàng</SelectItem>
+              <SelectItem value="2">Đang giao hàng</SelectItem>
+              <SelectItem value="3">Hoàn thành</SelectItem>
+              <SelectItem value="4">Đã hủy</SelectItem>
+
             </SelectContent>
           </Select>
 
@@ -246,7 +279,6 @@ export default function OrdersPage() {
         </Table>
       </div>
 
-      {/* Order Detail Modal */}
       {viewOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -347,69 +379,79 @@ export default function OrdersPage() {
             </div>
 
             {/* Tổng cộng và trạng thái */}
-<div className="flex justify-between items-center mb-6">
-  <div>
-    <p className="text-sm text-gray-500 mb-1">Trạng thái đơn hàng</p>
-    <span className={`px-3 py-1 rounded-full text-sm ${
-      statusColors[viewOrder.status as keyof typeof statusColors]
-    }`}>
-      {statusNames[viewOrder.status as keyof typeof statusNames]}
-    </span>
-  </div>
-  <div className="text-right space-y-1">
-    <div className="flex justify-between gap-8">
-      <p className="text-sm text-gray-500">Tạm tính:</p>
-      <p className="font-medium">
-        {(viewOrder.total - (viewOrder.shippingFee || 0)).toLocaleString('vi-VN')}đ
-      </p>
-    </div>
-    <div className="flex justify-between gap-8">
-      <p className="text-sm text-gray-500">Phí vận chuyển:</p>
-      <p className="font-medium">
-        {(viewOrder.shippingFee || 0).toLocaleString('vi-VN')}đ
-      </p>
-    </div>
-    <div className="flex justify-between gap-8 border-t pt-2 mt-2">
-      <p className="text-sm text-gray-700">Tổng tiền:</p>
-      <p className="text-xl font-bold text-orange-600">
-        {viewOrder.total.toLocaleString('vi-VN')}đ
-      </p>
-    </div>
-  </div>
-</div>
-
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Trạng thái đơn hàng</p>
+                <span className={`px-3 py-1 rounded-full text-sm ${
+                  statusColors[viewOrder.status as keyof typeof statusColors]
+                }`}>
+                  {statusNames[viewOrder.status as keyof typeof statusNames]}
+                </span>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="flex justify-between gap-8">
+                  <p className="text-sm text-gray-500">Tạm tính:</p>
+                  <p className="font-medium">
+                    {(viewOrder.total - (viewOrder.shippingFee || 0)).toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+                <div className="flex justify-between gap-8">
+                  <p className="text-sm text-gray-500">Phí vận chuyển:</p>
+                  <p className="font-medium">
+                    {(viewOrder.shippingFee || 0).toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+                <div className="flex justify-between gap-8 border-t pt-2 mt-2">
+                  <p className="text-sm text-gray-700">Tổng tiền:</p>
+                  <p className="text-xl font-bold text-orange-600">
+                    {viewOrder.total.toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+              </div>
+            </div>
 
             {/* Buttons */}
             <div className="flex justify-end gap-3">
+              {/* Nút đóng luôn có */}
               <Button
                 variant="outline"
                 onClick={() => setViewOrder(null)}
               >
                 Đóng
               </Button>
+
+              {/* Phê duyệt: chỉ khi đang chờ xử lý */}
               {viewOrder.status === 0 && (
-                <>
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleUpdateStatus(viewOrder.id, 3)}
-                  >
-                    Hủy đơn
-                  </Button>
-                  <Button
-                    onClick={() => handleUpdateStatus(viewOrder.id, 1)}
-                  >
-                    Phê duyệt
-                  </Button>
-                </>
+                <Button onClick={() => handleUpdateStatus(viewOrder.id, 1)}>
+                  Phê duyệt
+                </Button>
               )}
-              {viewOrder.status === 1 && (
+
+              {/* Hủy đơn: chỉ cho phép khi trạng thái là 0 (chờ xử lý) hoặc 1 (chờ giao) */}
+              {(viewOrder.status === 0 || viewOrder.status === 1) && (
                 <Button
-                  onClick={() => handleUpdateStatus(viewOrder.id, 2)}
+                  variant="destructive"
+                  onClick={() => handleCancelOrder(viewOrder.id)}
                 >
+                  Hủy đơn
+                </Button>
+              )}
+
+              {/* Hoàn thành: nếu đang giao thì hoàn thành (status 2 → 3) */}
+              {viewOrder.status === 2 && (
+                <Button onClick={() => handleUpdateStatus(viewOrder.id, 3)}>
                   Hoàn thành
                 </Button>
               )}
+
+              {/* Chuyển sang trạng thái đang giao (status 1 → 2) */}
+              {viewOrder.status === 1 && (
+                <Button onClick={() => handleUpdateStatus(viewOrder.id, 2)}>
+                  Đang giao
+                </Button>
+              )}
             </div>
+
           </div>
         </div>
       )}

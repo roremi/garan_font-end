@@ -20,6 +20,7 @@ export interface OrderDetails {
   shippingFee: number;
   discount: number;
   total: number;
+  isPaid: boolean;
 }
 
 export interface Order extends OrderDetails {

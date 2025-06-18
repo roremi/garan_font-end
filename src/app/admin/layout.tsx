@@ -69,6 +69,11 @@ const menuItems = [
     path: '/admin/Voucher',
   },
   {
+    title: 'Quản lý shipping',
+    icon: TicketPercent,
+    path: '/admin/Shipping',
+  },
+  {
     title: 'Quản lý người dùng',
     icon: Users,
     path: '/admin/users'
