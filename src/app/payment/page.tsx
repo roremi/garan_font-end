@@ -8,7 +8,7 @@ import Header from '@/components/layout/Header';
 import { useCart } from '@/contexts/CartContext';
 import Footer from '@/components/layout/Footer';
 import { Copy, Check, Timer, AlertCircle } from 'lucide-react';
-import { toast as toastSoner } from 'sonner';
+import { toast, toast as toastSoner } from 'sonner';
 import { api } from '@/services/api';
 
 export default function PaymentPage() {
@@ -122,19 +122,8 @@ export default function PaymentPage() {
 
   // Hàm xử lý khi người dùng nhấn nút "Về trang chủ"
   const handleGoHome = () => {
-    if (orderStatus === "0" && !isPaymentConfirmed && orderId) {
-      api.cancelOrder(Number(orderId))
-        .then(() => {
-          console.log(`Đã hủy đơn hàng #${orderId}`);
-          router.push('/');
-        })
-        .catch(err => {
-          console.error(`Lỗi khi hủy đơn hàng #${orderId}:`, err);
-          router.push('/');
-        });
-    } else {
+      toastSoner.error("Kiểm tra đơn hàng vừa tạo!")
       router.push('/');
-    }
   };
   
 

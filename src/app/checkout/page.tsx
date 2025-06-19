@@ -12,8 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { api } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
-import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { OrderCreateRequest } from '@/types/order';
@@ -30,11 +29,11 @@ import { de } from 'date-fns/locale';
 export default function CheckoutPage() {
   // Phần 3: Khởi tạo các hook và context
   const router = useRouter();
-  const { toast } = useToast();
   const { cart, clearCart } = useCart();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const subtotal = cart?.subtotal ?? 0;
   const cartItems = cart?.cartItems || [];
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Phần 4: Quản lý state cho địa chỉ, phí vận chuyển, voucher và form
   const [defaultAddress, setDefaultAddress] = useState<UserAddress | null>(null);
@@ -61,12 +60,8 @@ export default function CheckoutPage() {
 
   // Phần 5: Kiểm tra đăng nhập và chuyển hướng nếu chưa đăng nhập
   useEffect(() => {
-    if (!isAuthenticated) {
-      toast({
-        variant: "destructive",
-        title: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để tiếp tục thanh toán",
-      });
+    if (!isLoading && !isAuthenticated) {
+    toast.error(`Vui lòng đăng nhập!`);
       router.push('/auth/login');
     }
   }, [isAuthenticated, router, toast]);
@@ -97,11 +92,7 @@ export default function CheckoutPage() {
         setShowAddressDialog(true);
       } else {
         console.error("Không thể lấy địa chỉ mặc định", err);
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: "Không thể tải lại địa chỉ mặc định",
-        });
+        toast.error(`Không thể tải lại vị trí mặc định!`);
       }
     } finally {
       setIsLoadingAddress(false);
@@ -114,92 +105,80 @@ export default function CheckoutPage() {
   }, [refreshDefaultAddress]);
 
   // Phần 8: Tính tiền ship
-  useEffect(() => {
-  const fetchDistance = async () => {
-    if (defaultAddress && user?.id && defaultAddress.latitude && defaultAddress.longitude) {
-      try {
-        const result = await api.calculateShippingFee(
-          user.id,
-          defaultAddress.latitude,
-          defaultAddress.longitude
-        );
-        setDistanceKm(result.distanceKm);
-        setFinalShippingFee(result.shippingFee);
-        setTotalAmount(subtotal + result.shippingFee - discountAmount);
-      } catch (error) {
-        console.error("Lỗi khi tính phí vận chuyển:", error);
-        setDistanceKm(null);
-        setFinalShippingFee(0);
-        setTotalAmount(subtotal);
+//   useEffect(() => {
+//   const fetchDistance = async () => {
+//     if (defaultAddress && user?.id && defaultAddress.latitude && defaultAddress.longitude) {
+//       try {
+//         const result = await api.calculateShippingFee(
+//           user.id,
+//           defaultAddress.latitude,
+//           defaultAddress.longitude
+//         );
+//         setDistanceKm(result.distanceKm);
+//         setFinalShippingFee(result.shippingFee);
+//         setTotalAmount(subtotal + result.shippingFee - discountAmount);
+//       } catch (error) {
+//         console.error("Lỗi khi tính phí vận chuyển:", error);
+//         setDistanceKm(null);
+//         setFinalShippingFee(0);
+//         setTotalAmount(subtotal);
+//       }
+//     }
+//   };
+//   fetchDistance();
+// }, [defaultAddress, user?.id, subtotal, discountAmount]);
+
+
+  //Phần 9: Hàm tính phí vận chuyển
+  const calculateShippingFeeByAddress = useCallback(async (
+    userId: number,
+    addressId: number,
+    subtotal: number,
+    idVoucherDiscount?: string,
+    idVoucherShipping?: string
+  ) => {
+    try {
+      const response = await api.calculateShippingFeeByAddress(
+        userId,
+        addressId,
+        subtotal,
+        idVoucherDiscount,
+        idVoucherShipping
+      );
+      setFinalShippingFee(response.final_shipping_fee || response.shipping_fee || 0);
+      setShippingDiscount(response.shipping_discount || 0);
+      setFinalSubtotal(response.final_subtotal || subtotal);
+      setDiscountAmount(response.discount_amount || 0);
+      setTotalAmount(response.total || (response.final_subtotal + response.final_shipping_fee));
+      if (response.discount_voucher_error) {
+        toast.error(`Lỗi Voucher giảm giá!`);
       }
+      if (response.shipping_voucher_error) {
+       toast.error(`Lỗi Voucher vận chuyển!`);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tính phí vận chuyển:', error);
+      setFinalShippingFee(0);
+      setShippingDiscount(0);
+      setFinalSubtotal(subtotal);
+      setDiscountAmount(0);
+      setTotalAmount(subtotal);
+      toast.error(`Không thể tính phí vận chuyển!`);
     }
-  };
-  fetchDistance();
-}, [defaultAddress, user?.id, subtotal, discountAmount]);
+  }, [toast]);
 
-
-  // Phần 9: Hàm tính phí vận chuyển
-  // const calculateShippingFeeByAddress = useCallback(async (
-  //   userId: number,
-  //   addressId: number,
-  //   subtotal: number,
-  //   idVoucherDiscount?: string,
-  //   idVoucherShipping?: string
-  // ) => {
-  //   try {
-  //     const response = await api.getShippingFeeByAddress(
-  //       userId,
-  //       addressId,
-  //       subtotal,
-  //       idVoucherDiscount,
-  //       idVoucherShipping
-  //     );
-  //     setFinalShippingFee(response.final_shipping_fee || response.shipping_fee || 0);
-  //     setShippingDiscount(response.shipping_discount || 0);
-  //     setFinalSubtotal(response.final_subtotal || subtotal);
-  //     setDiscountAmount(response.discount_amount || 0);
-  //     setTotalAmount(response.total || (response.final_subtotal + response.final_shipping_fee));
-  //     if (response.discount_voucher_error) {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Lỗi Voucher Giảm Giá",
-  //         description: response.discount_voucher_error,
-  //       });
-  //     }
-  //     if (response.shipping_voucher_error) {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Lỗi Voucher Vận Chuyển",
-  //         description: response.shipping_voucher_error,
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error('Lỗi khi tính phí vận chuyển:', error);
-  //     setFinalShippingFee(0);
-  //     setShippingDiscount(0);
-  //     setFinalSubtotal(subtotal);
-  //     setDiscountAmount(0);
-  //     setTotalAmount(subtotal);
-  //     toast({
-  //       variant: "destructive",
-  //       title: "Lỗi",
-  //       description: "Không thể tính phí vận chuyển",
-  //     });
-  //   }
-  // }, [toast]);
-
-  // // Phần 10: Tính phí vận chuyển khi địa chỉ hoặc voucher thay đổi
-  // useEffect(() => {
-  //   if (defaultAddress && user?.id) {
-  //     calculateShippingFeeByAddress(
-  //       user.id,
-  //       defaultAddress.id,
-  //       subtotal,
-  //       idVoucherDiscount,
-  //       idVoucherShipping
-  //     );
-  //   }
-  // }, [defaultAddress, user?.id, subtotal, idVoucherDiscount, idVoucherShipping, calculateShippingFeeByAddress]);
+  // Phần 10: Tính phí vận chuyển khi địa chỉ hoặc voucher thay đổi
+  useEffect(() => {
+    if (defaultAddress && user?.id) {
+      calculateShippingFeeByAddress(
+        user.id,
+        defaultAddress.id,
+        subtotal,
+        idVoucherDiscount,
+        idVoucherShipping
+      );
+    }
+  }, [defaultAddress, user?.id, subtotal, idVoucherDiscount, idVoucherShipping, calculateShippingFeeByAddress]);
 
   // Phần 11: Xử lý sự kiện thay đổi input trong form
   const handleInputChange = (
@@ -275,20 +254,14 @@ export default function CheckoutPage() {
   // Phần 13: Xử lý submit form đặt hàng
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+     if (isSubmitting) return; // ⛔ Đã submit thì không cho ấn nữa
+     setIsSubmitting(true); // ✅ Đánh dấu đang xử lý
     if (!isAuthenticated || !user) {
-      toast({
-        variant: "destructive",
-        title: "Yêu cầu đăng nhập",
-        description: "Vui lòng đăng nhập để tiếp tục thanh toán",
-      });
+      toast.error(`Vui lòng đăng nhập để tiếp tục thanh toán!`);
       return;
     }
     if (!defaultAddress) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Vui lòng chọn địa chỉ nhận hàng",
-      });
+      toast.error(`Vui lòng chọn địa chỉ nhận hàng!`);
       return;
     }
     try {
@@ -315,28 +288,40 @@ export default function CheckoutPage() {
       if (formData.paymentMethod === 'BANKING') {
         const vietQRUrl = `https://img.vietqr.io/image/mbbank-0565251240-compact2.jpg?amount=${totalAmount}&addInfo=GARANCUCTAC${response.data.id}&accountName=TRAN%20TAN%20KHAI`;
         router.push(`/payment?orderId=${response.data.id}&qrCode=${encodeURIComponent(vietQRUrl)}&amount=${totalAmount}`);
+        clearCart();
       } else {
         clearCart();
-        toast({
-          title: "Đặt hàng thành công",
-          description: "Cảm ơn bạn đã đặt hàng!",
-        });
+        toast.success(`Cảm ơn bạn đã đặt hàng`);
         router.push('/');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Có lỗi xảy ra khi đặt hàng",
-      });
-    }
-  };
+    } catch (error: any) {
+        const rawMessage = error?.message || "Có lỗi xảy ra khi đặt hàng";
+
+        if (rawMessage.includes("chưa thanh toán")) {
+          toast.error(`Vui lòng kiểm tra đơn hàng gần nhất đã hoàn thành chưa!`);
+
+          setTimeout(() => {
+            router.push("/");
+          }, 3000);
+          return;
+        }
+
+        toast.error(rawMessage);
+      }
+};
 
   // Phần 14: Render giao diện người dùng
-  if (!isAuthenticated) {
-    return null;
-  }
+if (isLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <p className="text-gray-500 text-sm">Đang kiểm tra đăng nhập...</p>
+    </div>
+  );
+}
+
+if (!isAuthenticated) {
+  return null; // hoặc để trống vì đã redirect ở useEffect
+}
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -438,10 +423,7 @@ export default function CheckoutPage() {
                         subtotal={subtotal}
                         onSelect={(voucher) => {
                           setSelectedVoucher(voucher);
-                          toast({
-                            title: "Đã chọn voucher",
-                            description: voucher.discount?.description || voucher.shipping?.description || "Đã áp dụng voucher",
-                          });
+                          toast.error(voucher.discount?.description || voucher.shipping?.description || "Đã áp dụng voucher");
                         }}
                         onIdChange={({ idVoucherDiscount, idVoucherShipping }) => {
                           setIdVoucherDiscount(idVoucherDiscount);
@@ -480,8 +462,8 @@ export default function CheckoutPage() {
                       </RadioGroup>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full mt-6" disabled={isLoadingAddress || !defaultAddress}>
-                    {isLoadingAddress ? (
+                  <Button type="submit" className="w-full mt-6" disabled={isLoadingAddress || !defaultAddress || isSubmitting}>
+                    {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Đang xử lý...
@@ -490,6 +472,7 @@ export default function CheckoutPage() {
                       "Đặt hàng"
                     )}
                   </Button>
+
                 </form>
               </div>
               <div className="bg-white p-6 rounded-lg shadow h-fit">

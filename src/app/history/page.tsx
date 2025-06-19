@@ -1,3 +1,4 @@
+// Phần 1: Import các thư viện và component cần thiết
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -31,6 +32,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Eye, Calendar, Box, DollarSign, Truck } from "lucide-react";
 import { Order } from '@/types/order';
 
+// Phần 2: Định nghĩa interface và cấu hình trạng thái đơn hàng
 interface OrderStatus {
   label: string;
   color: string;
@@ -41,26 +43,18 @@ interface OrderStatusMap {
 }
 
 const ORDER_STATUS: OrderStatusMap = {
-  0: {
-    label: 'Chờ xác nhận',
-    color: 'warning'
-  },
-  1: {
-    label: 'Đang giao hàng',
-    color: 'info'
-  },
-  2: {
-    label: 'Đã giao hàng',
-    color: 'primary'
-  },
-  3: {
-    label: 'Đã hủy',
-    color: 'danger'
-  }
+  0: { label: 'Chờ xác nhận', color: 'warning' },
+  1: { label: 'Chờ giao hàng', color: 'blue' },
+  2: { label: 'Đang giao hàng', color: 'info' },
+  3: { label: 'Hoàn thành', color: 'success' },
+  4: { label: 'Đã hủy', color: 'destructive' },
+  5: {label: 'Chờ thanh toán', color: 'warning'}
 };
 
+// Phần 3: Component chính OrderHistory
 export default function OrderHistory() {
-  const { user, isAuthenticated } = useAuth();
+  // Khai báo state và hooks
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -71,18 +65,22 @@ export default function OrderHistory() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
 
+  // Phần 4: useEffect để kiểm tra xác thực và điều hướng
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/auth/login');
     }
+
   }, [isAuthenticated, router]);
 
+  // Phần 5: useEffect để lấy danh sách đơn hàng
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchOrders();
     }
   }, [isAuthenticated, user]);
 
+  // Phần 6: useEffect để lọc đơn hàng theo tab
   useEffect(() => {
     // Filter orders based on active tab
     if (activeTab === 'all') {
@@ -93,6 +91,7 @@ export default function OrderHistory() {
     }
   }, [activeTab, orders]);
 
+  // Phần 7: Hàm lấy danh sách đơn hàng từ API
   const fetchOrders = async () => {
     if (!isAuthenticated || !user) {
       return;
@@ -115,6 +114,7 @@ export default function OrderHistory() {
     }
   };
 
+  // Phần 8: Các hàm hỗ trợ định dạng
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
   };
@@ -138,6 +138,7 @@ export default function OrderHistory() {
     return orders.filter(order => order.status === 0).length;
   };
 
+  // Phần 9: Hàm xử lý xem chi tiết đơn hàng
   const handleViewOrder = async (order: Order) => {
     try {
       setLoadingDetails(true);
@@ -160,9 +161,10 @@ export default function OrderHistory() {
     }
   };
 
+  // Phần 10: Hàm xử lý hủy đơn hàng
   const handleCancelOrder = async (orderId: number) => {
     try {
-      await api.confirmOrder(orderId, 3); // 3 là trạng thái đã hủy
+      await api.CancelOrderbyUser(orderId); // 3 là trạng thái đã hủy
       toast({
         title: "Thành công",
         description: "Đã hủy đơn hàng",
@@ -179,10 +181,21 @@ export default function OrderHistory() {
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Phần 11: Render giao diện khi chưa xác thực
+  if (isLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <p className="text-gray-500 text-sm">Đang kiểm tra đăng nhập...</p>
+    </div>
+  );
+}
 
+if (!isAuthenticated) {
+  return null; // hoặc để trống vì đã redirect ở useEffect
+}
+
+
+  // Phần 12: Render giao diện khi đang tải
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
@@ -198,6 +211,7 @@ export default function OrderHistory() {
     );
   }
 
+  // Phần 13: Render giao diện chính
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -352,7 +366,6 @@ export default function OrderHistory() {
       </main>
       <Footer />
       
-      {/* Order Detail Modal */}
       {viewOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -491,13 +504,29 @@ export default function OrderHistory() {
 
             {/* Buttons */}
             <div className="flex justify-end gap-3">
+              {/* Nút Đóng luôn hiển thị */}
               <Button
                 variant="outline"
                 onClick={() => setViewOrder(null)}
               >
                 Đóng
               </Button>
-              {viewOrder.status === 0 && (
+
+              {/* Nút Thanh toán lại - chỉ khi chưa thanh toán, status = 0, phương thức banking */}
+              {viewOrder.status === 0 && !viewOrder.isPaid && viewOrder.paymentMethod === 'BANKING' && (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    const vietQRUrl = `https://img.vietqr.io/image/mbbank-0565251240-compact2.jpg?amount=${viewOrder.total}&addInfo=GARANCUCTAC${viewOrder.id}&accountName=TRAN%20TAN%20KHAI`;
+                    router.push(`/payment?orderId=${viewOrder.id}&qrCode=${encodeURIComponent(vietQRUrl)}&amount=${viewOrder.total}`);
+                  }}
+                >
+                  Thanh toán lại
+                </Button>
+              )}
+
+              {/* Nút Hủy đơn - chỉ khi chưa thanh toán và chờ xác nhận */}
+              {viewOrder.status === 0 && !viewOrder.isPaid && (
                 <Button
                   variant="destructive"
                   onClick={() => handleCancelOrder(viewOrder.id)}
@@ -506,6 +535,8 @@ export default function OrderHistory() {
                 </Button>
               )}
             </div>
+
+
           </div>
         </div>
       )}
