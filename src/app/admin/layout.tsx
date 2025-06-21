@@ -78,6 +78,11 @@ const menuItems = [
     icon: Users,
     path: '/admin/users'
   },
+   {
+    title: 'Quản lý Driver',
+    icon: Users,
+    path: '/admin/driver'
+  },
   {
     title: 'Quản lý tin nhắn',
     icon: MessageCircle,
