@@ -2,7 +2,7 @@ import { LoginData, RegisterData, UserProfile, AuthResponse, TwoFactorValidateRe
 import { storage } from '@/utils/storage';
 import axios from 'axios';
 import { EmailVerificationRequest, VerifyOTPRequest, ApiResponse, VerifyEmailOTPRequest } from '@/types/auth';
-
+import { Driver } from '@/types/driver';
 
 const API_URL = 'https://localhost:5001/api';
 
@@ -694,6 +694,82 @@ async deleteUserAddress(userId: number, addressId: number): Promise<any> {
     throw error;
   }
 }
+
+//driver
+// Lấy danh sách shipper
+async getAllShippers(): Promise<Driver[]> {
+  const token = storage.getItem('token');
+  const response = await fetch(`${API_URL}/User/shippers`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) throw new Error(await response.text());
+  return await response.json();
+}
+
+// Tạo shipper mới
+async createShipper(data: {
+  username: string;
+  email: string;
+  password: string;
+  fullName: string;
+  phoneNumber: string;
+  vehiclePlate: string;
+}): Promise<any> {
+  const token = storage.getItem('token');
+  const response = await fetch(`${API_URL}/User/shippers`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) throw new Error(await response.text());
+  return await response.json();
+}
+
+// Cập nhật thông tin shipper
+async updateShipper(id: number, data: {
+  fullName: string;
+  phoneNumber: string;
+  vehiclePlate: string;
+  isAvailable: boolean;
+}): Promise<any> {
+  const token = storage.getItem('token');
+  const response = await fetch(`${API_URL}/User/shippers/${id}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) throw new Error(await response.text());
+  return await response.json();
+}
+
+// Xoá tài xế
+async deleteShipper(id: number): Promise<any> {
+  const token = storage.getItem('token');
+  const response = await fetch(`${API_URL}/User/shippers/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) throw new Error(await response.text());
+  return await response.text();
+}
+
  
 
   logout(): void {
