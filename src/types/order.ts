@@ -28,6 +28,9 @@ export interface Order extends OrderDetails {
   orderDate: string;
   status: number;
   createAt: string;
+   latitude?: number;    // ✅ thêm
+  longitude?: number;   // ✅ thêm
+  driverId?: number;    // ✅ nếu cần gán shipper
 }
 
 
@@ -66,6 +69,9 @@ export interface OrderResponse {
   status: number;
   total: number;
   detailorders: OrderDetailResponse[];
+   latitude?: number;     // ✅ thêm
+  longitude?: number;    // ✅ thêm
+  driverId?: number;     
 }
 
 export interface OrderDetailResponse {

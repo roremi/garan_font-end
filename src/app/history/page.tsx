@@ -1,6 +1,6 @@
 // Phần 1: Import các thư viện và component cần thiết
 'use client';
-
+import dynamic from "next/dynamic";
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -64,6 +64,7 @@ export default function OrderHistory() {
   const [orderDetails, setOrderDetails] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
+  const Maptracking = dynamic(() => import('@/components/Maptracking'), { ssr: false });
 
   // Phần 4: useEffect để kiểm tra xác thực và điều hướng
   useEffect(() => {
@@ -501,6 +502,19 @@ if (!isAuthenticated) {
                 </div>
               </div>
             </div>
+            {/* BẢN ĐỒ theo dõi tài xế - chỉ hiển thị nếu đơn đang được giao và có driver */}
+      {viewOrder.status === 2 && viewOrder.driverId && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Theo dõi tài xế</h3>
+          <div className="rounded border overflow-hidden" style={{ height: "400px" }}>
+            <Maptracking
+              key={viewOrder.id}
+              orderId={viewOrder.id}
+              destination={viewOrder.address}
+            />
+          </div>
+        </div>
+      )}
 
             {/* Buttons */}
             <div className="flex justify-end gap-3">
