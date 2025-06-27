@@ -1088,7 +1088,29 @@ updateShippingConfig: async (key: string, value: string) => {
   return response.json();
 },
 
+// lấy vị trí tài xế 
+getDriverLocation: async (orderId: number): Promise<{
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+}> => {
+  const response = await fetch(`${API_URL}/driver/order-tracking/${orderId}`, {
+    headers: getHeaders(),
+  });
 
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Không thể lấy vị trí tài xế");
+  }
+
+  const result = await response.json();
+
+  if (result.status !== 200 || !result.data) {
+    throw new Error(result.message || "Không có dữ liệu vị trí tài xế");
+  }
+
+  return result.data;
+},
 
 
 };
