@@ -1111,6 +1111,46 @@ getDriverLocation: async (orderId: number): Promise<{
 
   return result.data;
 },
+// Lấy danh sách quyền của user
+getUserPermissions: async (userId: number): Promise<{ id: number, username: string, permissions: string[] }> => {
+  const res = await fetch(`${API_URL}/admin/user-permissions/${userId}`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Không thể tải quyền người dùng');
+  return res.json();
+},
 
+// Gán lại quyền cho user
+assignPermissionsToUser: async (userId: number, permissionNames: string[]): Promise<{ message: string }> => {
+  const res = await fetch(`${API_URL}/admin/user-permissions/${userId}`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(permissionNames)
+  });
+  if (!res.ok) throw new Error('Không thể cập nhật quyền');
+  return res.json();
+},
+getAllUserProfiles: async (): Promise<{ id: number, username: string, fullName: string }[]> => {
+  const res = await fetch(`${API_URL}/User/all-profiles`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Không thể tải danh sách người dùng');
+  return res.json();
+},
+getUserProfile: async () => {
+  const response = await fetch(`https://localhost:5001/api/User/profile`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1')}`
+    }
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Không thể lấy thông tin người dùng');
+  }
+
+  return response.json();
+}
 
 };
