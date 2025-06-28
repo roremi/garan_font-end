@@ -99,7 +99,6 @@ export default function ProfilePage() {
         fullName: user?.fullName || '',
         email: user?.email || '',
         phoneNumber: user?.phoneNumber || '',
-
         avatar: user?.avatar || '',
       });
   
@@ -129,6 +128,10 @@ export default function ProfilePage() {
       toast.error('Mật khẩu mới không khớp');
       return;
     }
+    if (passwordData.newPassword === passwordData.oldPassword) {
+    toast.error('Mật khẩu mới không được trùng với mật khẩu cũ');
+    return;
+  }
   
     setIsLoading(true);
     try {
