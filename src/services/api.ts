@@ -1130,13 +1130,14 @@ assignPermissionsToUser: async (userId: number, permissionNames: string[]): Prom
   if (!res.ok) throw new Error('Không thể cập nhật quyền');
   return res.json();
 },
-getAllUserProfiles: async (): Promise<{ id: number, username: string, fullName: string }[]> => {
+getAllUserProfiles: async (): Promise<{ id: number, username: string, fullName: string, role: number }[]> => {
   const res = await fetch(`${API_URL}/User/all-profiles`, {
     headers: getHeaders()
   });
   if (!res.ok) throw new Error('Không thể tải danh sách người dùng');
   return res.json();
 },
+
 getUserProfile: async () => {
   const response = await fetch(`https://localhost:5001/api/User/profile`, {
     headers: {

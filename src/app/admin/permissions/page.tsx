@@ -12,7 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 const ALL_PERMISSIONS = [
   "permission_delete_product",
   "permission_update_product",
-  "permission_view_orders"
+  "permission_view_product",
+  "permission_view_admin_page",
+  "permission_view_history_order",
+  "permission_manager_chat",
+  "permission_view_dashboard"
 ];
 
 export default function UserPermissionsPage() {
