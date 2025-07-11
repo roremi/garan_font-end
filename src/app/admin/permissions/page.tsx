@@ -16,8 +16,59 @@ const ALL_PERMISSIONS = [
   "permission_view_admin_page",
   "permission_view_history_order",
   "permission_manager_chat",
-  "permission_view_dashboard"
+  "permission_view_dashboard",
+  "permission_view_voucher",
+  "permission_update_voucher",
+  "permission_create_voucher",
+  "permission_delete_voucher",
+  "permission_view_allprofile",
+  "permission_update_profile",
+  "permission_delete_user",
+  "permission_delete_shipper",
+  "permission_update_shipper",
+  "permission_create_shipper",
+  "permission_view_order",
+  "permission_view_combo",
+  "permission_update_combo",
+  "permission_delete_combo",
+  "permission_view_comboproduct",
+  "permission_create_comboproduct",
+  "permission_update_comboproduct",
+  "permission_delete_comboproduct",
+  "permission_delete_category",
+  "permission_create_category",
+  "permission_put_category",
+  "permission_update_category",
 ];
+const PRESET_PERMISSIONS: Record<string, string[]> = {
+  "Kế toán": [
+    "permission_view_admin_page",
+    "permission_view_dashboard",
+    "permission_view_history_order",
+    "permission_view_product",
+    "permission_view_voucher",
+  ],
+  "Thu ngân": [
+    "permission_view_order",
+    "permission_update_order",
+    "permission_view_product",
+    "permission_view_voucher",
+  ],
+  "Phục vụ": [
+    "permission_view_order",
+    "permission_update_order",
+    "permission_view_product",
+    "permission_view_combo",
+  ],
+  "Quản lý nhân sự": [
+    "permission_view_allprofile",
+    "permission_update_profile",
+    "permission_delete_user",
+    "permission_create_shipper",
+    "permission_update_shipper",
+    "permission_delete_shipper",
+  ],
+};
 
 export default function UserPermissionsPage() {
   const { toast } = useToast();
@@ -28,7 +79,10 @@ export default function UserPermissionsPage() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-
+  const applyPreset = (role: string) => {
+    const permissions = PRESET_PERMISSIONS[role] || [];
+    setSelectedPermissions(permissions);
+  };
   useEffect(() => {
     if (!user || Number(user.role) !== 0) {
       toast({ title: 'Không có quyền truy cập', variant: 'destructive' });
@@ -59,6 +113,27 @@ export default function UserPermissionsPage() {
       toast({ title: 'Lỗi tải quyền', description: err.message, variant: 'destructive' });
     }
   };
+const getGroupedPermissions = () => {
+  const groups: Record<string, any> = {};
+
+  ALL_PERMISSIONS.forEach((perm) => {
+    const parts = perm.split('_');
+    const action = parts[1]; // view, update, delete, create, etc.
+    const entity = parts.slice(2).join('_'); // product, shipper, etc.
+
+    if (!groups[entity]) {
+      groups[entity] = { entity, perms: {} };
+    }
+
+    if (['view'].includes(action)) groups[entity].perms.view = perm;
+    else if (['update', 'put'].includes(action)) groups[entity].perms.update = perm;
+    else if (['delete'].includes(action)) groups[entity].perms.delete = perm;
+    else if (['create'].includes(action)) groups[entity].perms.create = perm;
+  });
+
+  // Sort alphabetically by entity name
+  return Object.values(groups).sort((a: any, b: any) => a.entity.localeCompare(b.entity));
+};
 
   const togglePermission = (perm: string) => {
     setSelectedPermissions((prev) =>
@@ -102,29 +177,68 @@ export default function UserPermissionsPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cấp quyền cho {selectedUser?.username}</DialogTitle>
-          </DialogHeader>
+<DialogContent className="max-w-6xl">
+  <DialogHeader>
+    <DialogTitle>Cấp quyền cho {selectedUser?.username}</DialogTitle>
+  </DialogHeader>
+<div className="flex flex-wrap gap-2 mb-4">
+  {Object.keys(PRESET_PERMISSIONS).map(role => (
+    <Button
+      key={role}
+      variant="outline"
+      onClick={() => applyPreset(role)}
+    >
+      Chọn quyền {role}
+    </Button>
+  ))}
+</div>
 
-          <div className="space-y-3 mt-4">
-            {ALL_PERMISSIONS.map((perm) => (
-              <div key={perm} className="flex items-center space-x-3">
-                <Checkbox
-                  id={perm}
-                  checked={selectedPermissions.includes(perm)}
-                  onCheckedChange={() => togglePermission(perm)}
-                />
-                <label htmlFor={perm} className="text-sm">{perm}</label>
-              </div>
-            ))}
-          </div>
+  <div className="overflow-x-auto mt-4">
+    <table className="w-full text-sm border">
+      <thead>
+        <tr className="bg-gray-100 text-left">
+          <th className="p-2">Thực thể</th>
+          <th className="p-2 text-center">View</th>
+          <th className="p-2 text-center">Update</th>
+          <th className="p-2 text-center">Delete</th>
+          <th className="p-2 text-center">Create</th>
+        </tr>
+      </thead>
+      <tbody>
+        {getGroupedPermissions().map(({ entity, perms }) => (
+          <tr key={entity} className="border-t">
+            <td className="p-2 font-medium">{entity}</td>
+            {['view', 'update', 'delete', 'create'].map((action) => {
+              const fullPerm = perms[action];
+              return (
+                <td key={action} className="p-2 text-center">
+                  {fullPerm ? (
+                    <div className="flex justify-center items-center gap-2">
+                      <Checkbox
+                        id={fullPerm}
+                        checked={selectedPermissions.includes(fullPerm)}
+                        onCheckedChange={() => togglePermission(fullPerm)}
+                      />
+                      <label htmlFor={fullPerm} className="hidden md:inline-block text-xs text-muted-foreground">{fullPerm}</label>
+                    </div>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 
-          <DialogFooter className="mt-6">
-            <Button onClick={savePermissions}>Lưu quyền</Button>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Đóng</Button>
-          </DialogFooter>
-        </DialogContent>
+  <DialogFooter className="mt-6">
+    <Button onClick={savePermissions}>Lưu quyền</Button>
+    <Button variant="outline" onClick={() => setDialogOpen(false)}>Đóng</Button>
+  </DialogFooter>
+</DialogContent>
+
       </Dialog>
     </div>
   );
