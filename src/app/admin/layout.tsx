@@ -17,8 +17,7 @@ import {
   MessageCircle,
   TicketPercent,
   Layers,
-  Boxes,  
-  PenBoxIcon
+  Boxes  
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,11 +87,6 @@ const menuItems = [
     title: 'Quản lý tin nhắn',
     icon: MessageCircle,
     path: '/admin/chat'
-  },
-    {
-    title: 'Quản lý quyền',
-    icon: PenBoxIcon,
-    path: '/admin/permissions'
   },
   {
     title: 'Cài đặt',
