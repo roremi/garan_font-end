@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import path from 'path';
 
 const menuItems = [
   {
@@ -89,10 +90,15 @@ const menuItems = [
     path: '/admin/chat'
   },
   {
-    title: 'Cài đặt',
-    icon: Settings,
-    path: '/admin/settings'
-  }
+    title: 'Maketting',
+    icon: Boxes,
+    path: '/admin/maketting'
+  },
+  // {
+  //   title: 'Cài đặt',
+  //   icon: Settings,
+  //   path: '/admin/settings'
+  // }
 ];
 
 export default function AdminLayout({
@@ -247,10 +253,11 @@ export default function AdminLayout({
                     <User className="mr-2 h-4 w-4" />
                     Tài khoản
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/admin/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     Cài đặt
                   </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-red-500" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
