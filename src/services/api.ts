@@ -1152,6 +1152,180 @@ getUserProfile: async () => {
   }
 
   return response.json();
+},
+// Dashboard Campaign APIs
+getCampaignOverview: async () => {
+  const response = await fetch(`${API_URL}/admin/dashboard/campaign-overview`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thống kê dashboard campaign');
+  return response.json();
+},
+
+getRecentActivities: async () => {
+  const response = await fetch(`${API_URL}/admin/dashboard/recent-activities`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy hoạt động gần đây');
+  return response.json();
+},
+
+// Admin Campaign APIs
+// Lấy danh sách tất cả campaigns
+getAdminCampaigns: async () => {
+  const response = await fetch(`${API_URL}/admin/campaigns`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy danh sách campaigns');
+  return response.json();
+},
+
+// Lấy campaign theo ID
+getAdminCampaignById: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thông tin campaign');
+  return response.json();
+},
+
+// Tạo campaign mới
+createAdminCampaign: async (campaignData: {
+  name: string;
+  subject: string;
+  content: string;
+  targetSegment: string;
+}) => {
+  const response = await fetch(`${API_URL}/admin/campaigns`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(campaignData)
+  });
+  if (!response.ok) throw new Error('Không thể tạo campaign');
+  return response.json();
+},
+
+// Cập nhật campaign
+updateAdminCampaign: async (id: number, campaignData: {
+  name: string;
+  subject: string;
+  content: string;
+  targetSegment: string;
+}) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(campaignData)
+  });
+  if (!response.ok) throw new Error('Không thể cập nhật campaign');
+  return response.json();
+},
+
+// Xóa campaign
+deleteAdminCampaign: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể xóa campaign');
+  return response.json();
+},
+
+// Gửi campaign ngay lập tức
+sendCampaignNow: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}/send`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể gửi campaign');
+  return response.json();
+},
+
+// Gửi campaign với AI enhancement
+sendCampaignWithAI: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}/send-with-ai`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể gửi campaign với AI');
+  return response.json();
+},
+
+// Preview AI content cho campaign
+previewCampaignAI: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}/preview-ai`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể tạo AI preview');
+  return response.json();
+},
+
+// Tối ưu hóa campaign với AI
+optimizeCampaignWithAI: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}/optimize-with-ai`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể tối ưu hóa campaign với AI');
+  return response.json();
+},
+
+// Lập lịch gửi campaign
+scheduleCampaign: async (id: number, scheduleTime: string) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}/schedule`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ scheduleTime })
+  });
+  if (!response.ok) throw new Error('Không thể lập lịch campaign');
+  return response.json();
+},
+
+// Lấy thống kê tracking campaign
+getCampaignTracking: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/campaigns/${id}/tracking`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thống kê campaign');
+  return response.json();
+},
+
+// Lấy thống kê tổng quan campaigns
+getCampaignStatistics: async () => {
+  const response = await fetch(`${API_URL}/admin/campaigns/statistics`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thống kê campaigns');
+  return response.json();
+},
+
+// Kiểm tra trạng thái AI service
+getCampaignAIStatus: async () => {
+  const response = await fetch(`${API_URL}/admin/campaigns/ai-status`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể kiểm tra trạng thái AI');
+  return response.json();
+},
+
+// Test nhanh AI service
+quickTestCampaignAI: async () => {
+  const response = await fetch(`${API_URL}/admin/campaigns/ai-quick-test`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể test AI service');
+  return response.json();
+},
+
+// Lấy AI insights và recommendations
+getCampaignAIInsights: async () => {
+  const response = await fetch(`${API_URL}/admin/campaigns/ai-insights`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy AI insights');
+  return response.json();
 }
 
 };
