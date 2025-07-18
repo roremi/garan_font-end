@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import Header from '@/components/layout/Header';
 import { useCart } from '@/contexts/CartContext';
 import Footer from '@/components/layout/Footer';
 import { Copy, Check, Timer, AlertCircle } from 'lucide-react';
-import { toast, toast as toastSoner } from 'sonner';
+import { toast as toastSoner } from 'sonner';
 import { api } from '@/services/api';
 
 export default function PaymentPage() {
@@ -16,10 +16,10 @@ export default function PaymentPage() {
   const router = useRouter();
   const [countdown, setCountdown] = useState(900); // 15 phút
   const [copied, setCopied] = useState<string>('');
-  const [isConfirming, setIsConfirming] = useState(false);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const { cart, clearCart } = useCart();
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null); // UseRef để lưu interval an toàn
   
   const orderId = searchParams?.get('orderId') ?? '';
   const qrCode = searchParams?.get('qrCode') ?? '';
@@ -62,10 +62,56 @@ export default function PaymentPage() {
       });
     }, 1000);
   
-    // Chỉ cleanup timer, không hủy đơn ở đây nữa
     return () => clearInterval(timer);
   }, [orderId, qrCode, router]);
-  
+
+  // Auto quét (polling): Chỉ run 1 lần khi mount, dùng useRef cho interval
+  useEffect(() => {
+    console.log('[DEBUG] Polling useEffect mounted'); // Log để xem useEffect có run không
+    
+    if (!isPaymentConfirmed) {
+      pollIntervalRef.current = setInterval(async () => {
+        if (countdown <= 0) {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          toastSoner.error("Hết thời gian", { description: "Đơn hàng hết hạn. Vui lòng tạo mới." });
+          return;
+        }
+        
+        try {
+          console.log(`[POLL START] Checking for order ${orderId} at ${new Date().toISOString()}`);
+          const checkResult = await api.checkTransaction({
+            orderId: Number(orderId),
+            amount: Number(amount),
+            description: bankInfo.transferContent
+          });
+          console.log('[POLL RESULT]', checkResult);
+          
+          if (checkResult.success) {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            setIsPaymentConfirmed(true);
+            clearCart();
+            toastSoner.success("Thanh toán thành công", {
+              description: checkResult.message || "Chúng tôi đã xác nhận giao dịch. Đơn hàng của bạn đang được xử lý."
+            });
+            // Chỉ chuyển hướng sau khi đã confirm success và toast hiển thị
+            setTimeout(() => router.push('/history'), 2000);
+            console.log('[POLL SUCCESS] Triggered');
+          } else {
+            console.log('[POLL FAIL] No transaction yet');
+          }
+        } catch (error: unknown) { // Type error as unknown
+          console.error('[POLL ERROR]', error);
+          // Type guard để lấy message an toàn
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          // toastSoner.error("Lỗi kiểm tra tự động", { description: errorMessage });
+        }
+      }, process.env.NODE_ENV === 'development' ? 5000 : 15000); // 5s dev, 15s prod
+    }
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, [isPaymentConfirmed, orderId, amount, router, clearCart]); // Xóa countdown khỏi dependency
 
   // Định dạng thời gian đếm ngược
   const formatTime = (seconds: number) => {
@@ -84,48 +130,11 @@ export default function PaymentPage() {
     });
   };
 
-  const handleConfirmPayment = async () => {
-    setIsConfirming(true);
-    try {
-      // Gọi API kiểm tra giao dịch
-      const checkResult = await api.checkTransaction({
-        orderId: Number(orderId),
-        amount: Number(amount),
-        description: bankInfo.transferContent
-      });
-  
-      if (checkResult.success) {
-        setIsPaymentConfirmed(true); // Đánh dấu đã xác nhận thanh toán
-        clearCart();
-        toastSoner.success("Xác nhận thanh toán thành công", {
-          description: checkResult.message || "Chúng tôi sẽ kiểm tra và xử lý đơn hàng của bạn trong thời gian sớm nhất"
-        });
-  
-        // Chuyển hướng đến trang lịch sử đơn hàng sau 2 giây
-        setTimeout(() => {
-          router.push('/history');
-        }, 2000);
-      } else {
-        toastSoner.error("Thông báo", {
-          description: checkResult.message || "Không tìm thấy giao dịch. Vui lòng thử lại sau vài phút"
-        });
-      }
-    } catch (error) {
-      console.error('Error checking transaction:', error);
-      toastSoner.error("Lỗi", {
-        description: "Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại sau"
-      });
-    } finally {
-      setIsConfirming(false);
-    }
-  };
-
   // Hàm xử lý khi người dùng nhấn nút "Về trang chủ"
   const handleGoHome = () => {
-      toastSoner.error("Kiểm tra đơn hàng vừa tạo!")
-      router.push('/');
+    toastSoner.error("Kiểm tra đơn hàng vừa tạo!");
+    router.push('/');
   };
-  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -237,7 +246,7 @@ export default function PaymentPage() {
                       <h3 className="font-medium text-yellow-800">Lưu ý khi thanh toán</h3>
                       <ul className="text-sm text-yellow-700 mt-1 list-disc list-inside space-y-1">
                         <li>Vui lòng nhập chính xác nội dung chuyển khoản</li>
-                        <li>Đơn hàng sẽ được xử lý sau khi chúng tôi nhận được thanh toán</li>
+                        <li>Đơn hàng sẽ được xử lý tự động sau khi chúng tôi nhận được thanh toán</li>
                         <li>Nếu cần hỗ trợ, vui lòng liên hệ hotline: 0909 123 456</li>
                       </ul>
                     </div>
@@ -255,6 +264,7 @@ export default function PaymentPage() {
                         alt="QR Code"
                         fill
                         style={{ objectFit: "contain" }}
+                        sizes="100vw" // Fix warning missing sizes
                       />
                     </div>
                   </div>
@@ -271,21 +281,9 @@ export default function PaymentPage() {
             >
               Về trang chủ
             </Button>
-            <Button
-              variant="default"
-              className="bg-green-600 hover:bg-green-700"
-              onClick={handleConfirmPayment}
-              disabled={isConfirming}
-            >
-              {isConfirming ? (
-                <>
-                  <span className="animate-spin mr-2">⭕</span>
-                  Đang xác nhận...
-                </>
-              ) : (
-                'Tôi đã chuyển khoản'
-              )}
-            </Button>
+            {!isPaymentConfirmed && countdown > 0 && (
+              <p className="text-center text-green-600 font-medium">Hệ thống đang tự động kiểm tra thanh toán...</p>
+            )}
           </div>
         </div>
       </main>
