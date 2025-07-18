@@ -1033,6 +1033,11 @@ getDailyRevenue: async (fromDate: string, toDate: string) => {
   if (!response.ok) throw new Error('Không thể lấy dữ liệu doanh thu theo ngày');
   return response.json();
 },
+getDailyRevenueTable: async (from: string, to: string) => {
+  const response = await fetch(`${API_URL}/dashboard/daily-revenue-table?fromDate=${from}&toDate=${to}`);
+  return await response.json();
+},
+
 
 // Sản phẩm bán chạy
 getBestSellingProducts: async (fromDate: string, toDate: string) => {
@@ -1042,6 +1047,12 @@ getBestSellingProducts: async (fromDate: string, toDate: string) => {
   if (!response.ok) throw new Error('Không thể lấy sản phẩm bán chạy');
   return response.json();
 },
+getBestSellersTable: async (from: string, to: string) => {
+  const response = await fetch(`${API_URL}/dashboard/best-selling-products-table?fromDate=${from}&toDate=${to}`);
+  if (!response.ok) throw new Error('Không thể lấy bảng sản phẩm bán chạy');
+  return await response.json();
+},
+
 
 // Trạng thái đơn hàng
 getOrderStatusStatistics: async (fromDate: string, toDate: string) => {
@@ -1051,6 +1062,12 @@ getOrderStatusStatistics: async (fromDate: string, toDate: string) => {
   if (!response.ok) throw new Error('Không thể lấy thống kê trạng thái đơn hàng');
   return response.json();
 },
+getOrderStatusTable: async (from: string, to: string) => {
+  const response = await fetch(`${API_URL}/dashboard/order-status-table?fromDate=${from}&toDate=${to}`);
+  if (!response.ok) throw new Error('Không thể lấy bảng trạng thái đơn hàng');
+  return await response.json();
+},
+
 // Lấy Google Maps API key
 getGoogleMapsApiKey: async () => {
   const response = await fetch(`${API_URL}/Location/google-maps-api-key`, {
