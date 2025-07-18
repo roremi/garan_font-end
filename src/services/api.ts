@@ -1326,6 +1326,79 @@ getCampaignAIInsights: async () => {
   });
   if (!response.ok) throw new Error('Không thể lấy AI insights');
   return response.json();
-}
+},
+// Customer Segments APIs
+// Lấy danh sách tất cả phân khúc khách hàng
+getCustomerSegments: async () => {
+  const response = await fetch(`${API_URL}/admin/customer-segments`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy danh sách phân khúc khách hàng');
+  return response.json();
+},
+
+// Cập nhật tự động tất cả phân khúc khách hàng
+autoUpdateAllSegments: async () => {
+  const response = await fetch(`${API_URL}/admin/customer-segments/auto-update`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể cập nhật tự động phân khúc khách hàng');
+  return response.json();
+},
+
+// Cập nhật tự động phân khúc cho một khách hàng
+autoUpdateUserSegment: async (userId: number) => {
+  const response = await fetch(`${API_URL}/admin/customer-segments/auto-update/${userId}`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể cập nhật phân khúc khách hàng');
+  return response.json();
+},
+
+// Preview phân khúc cho một khách hàng
+previewUserSegment: async (userId: number) => {
+  const response = await fetch(`${API_URL}/admin/customer-segments/preview/${userId}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy preview phân khúc khách hàng');
+  return response.json();
+},
+
+// Preview tất cả phân khúc khách hàng
+previewAllSegments: async () => {
+  const response = await fetch(`${API_URL}/admin/customer-segments/preview-all`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy preview tất cả phân khúc');
+  return response.json();
+},
+
+// Lấy thống kê phân khúc khách hàng
+getSegmentationStats: async () => {
+  const response = await fetch(`${API_URL}/admin/customer-segments/stats`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thống kê phân khúc');
+  return response.json();
+},
+
+// Tạo hoặc cập nhật phân khúc khách hàng (manual)
+createCustomerSegment: async (segmentData: {
+  userId: number;
+  segment: string;
+  totalSpent: number;
+  orderCount: number;
+  lastOrderDate?: string;
+}) => {
+  const response = await fetch(`${API_URL}/admin/customer-segments`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(segmentData)
+  });
+  if (!response.ok) throw new Error('Không thể tạo phân khúc khách hàng');
+  return response.json();
+},
 
 };
