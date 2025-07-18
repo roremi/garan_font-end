@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Import các components
 import DashboardComponent from "@/components/admin/marketing/DashboardComponent";
 import CampaignsComponent from "@/components/admin/marketing/CampaignsComponent";
-// import SegmentsComponent from "@/components/admin/marketing/SegmentsComponent";
+import SegmentsComponent from "@/components/admin/marketing/SegmentsComponent";
 // import RulesComponent from "@/components/admin/marketing/RulesComponent";
 // import VouchersComponent from "@/components/admin/marketing/VouchersComponent";
 // import TemplatesComponent from "@/components/admin/marketing/TemplatesComponent";
@@ -58,9 +58,7 @@ export default function MarketingEmailPage() {
         </TabsContent>
 
         <TabsContent value="segments">
-          <div className="text-center py-12">
-            <p className="text-gray-500">Segments Component - Sẽ tạo tiếp</p>
-          </div>
+          <SegmentsComponent />
         </TabsContent>
 
         <TabsContent value="rules">
