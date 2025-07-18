@@ -40,26 +40,44 @@ export default function VouchersPage() {
   };
 
   const handleAdd = async (voucher: Voucher | Omit<Voucher, 'id'>) => {
-    const { id, ...data } = voucher as Voucher;
-    await api.addVoucher(data);
-    toast({ title: 'Đã thêm voucher' });
-    setIsModalOpen(false);
-    loadVouchers();
+    try {
+      const { id, ...data } = voucher as Voucher;
+      
+      // Thêm userId vào payload
+      const voucherData = {
+        ...data,
+        userId: user?.id || user?.userId || parseInt(user?.nameid || '0') // Lấy userId từ user context
+      };
+      
+      await api.addVoucher(voucherData);
+      toast({ title: 'Đã thêm voucher' });
+      setIsModalOpen(false);
+      loadVouchers();
+    } catch (error: any) {
+      toast({ title: 'Lỗi', description: error.message, variant: 'destructive' });
+    }
   };
-  
 
   const handleEdit = async (voucher: Voucher) => {
-    await api.updateVoucher(voucher.id, voucher);
-    toast({ title: 'Đã cập nhật voucher' });
-    setIsModalOpen(false);
-    loadVouchers();
+    try {
+      await api.updateVoucher(voucher.id, voucher);
+      toast({ title: 'Đã cập nhật voucher' });
+      setIsModalOpen(false);
+      loadVouchers();
+    } catch (error: any) {
+      toast({ title: 'Lỗi', description: error.message, variant: 'destructive' });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Xác nhận xoá voucher này?')) {
-      await api.deleteVoucher(id);
-      toast({ title: 'Đã xoá voucher' });
-      loadVouchers();
+    try {
+      if (confirm('Xác nhận xoá voucher này?')) {
+        await api.deleteVoucher(id);
+        toast({ title: 'Đã xoá voucher' });
+        loadVouchers();
+      }
+    } catch (error: any) {
+      toast({ title: 'Lỗi', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -89,7 +107,6 @@ export default function VouchersPage() {
               <TableHead>Mã</TableHead>
               <TableHead>Loại</TableHead>
               <TableHead>Mô tả</TableHead>
-              {/* <TableHead>Giá trị</TableHead> */}
               <TableHead>HSD</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Thao tác</TableHead>
@@ -101,7 +118,6 @@ export default function VouchersPage() {
                 <TableCell>{v.code}</TableCell>
                 <TableCell>{v.type}</TableCell>
                 <TableCell>{v.description}</TableCell>
-                {/* <TableCell>{v.discountValue ?? `${v.discountPercent}%`}</TableCell> */}
                 <TableCell>{new Date(v.expirationDate).toLocaleDateString()}</TableCell>
                 <TableCell>{v.status}</TableCell>
                 <TableCell>
