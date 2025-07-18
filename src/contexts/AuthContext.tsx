@@ -16,6 +16,8 @@ interface User {
   role: string | number;
   avatar?: string;
   is2FAEnabled?: boolean;
+  nameid?: string;    // Thêm nameid từ JWT
+  userId?: string
 }
 
 interface TwoFactorStatusDto {
