@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import { authService } from '@/services/auth.service';
+import { api } from '@/services/api';
 
 const GOOGLE_CLIENT_ID = '323366452251-9ue1mht4lmpefbctivuusovsbtsv6cse.apps.googleusercontent.com'; // 👉 đưa vào biến env nếu cần
 
@@ -36,6 +37,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (userData: Omit<User, 'id'> & { id?: number }) => void;
   logout: () => void;
+  permissions: string[];
   updateProfile: (data: Partial<User>) => Promise<void>;
   getTwoFactorStatus: () => Promise<TwoFactorStatusDto>;
   setupTwoFactor: () => Promise<SetupTwoFactorResponseDto>;
@@ -50,6 +52,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  
+  
+useEffect(() => {
+  const fetchPermissions = async () => {
+    if (user) {
+      const res = await api.getUserPermissions(user.id);
+      setPermissions(res.permissions || []);
+    }
+  };
+  fetchPermissions();
+}, [user]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -229,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider 
       value={{ 
         user, 
+        permissions,
         isLoading, 
         isAuthenticated,
         login, 
