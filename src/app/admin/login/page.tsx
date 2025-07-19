@@ -75,30 +75,43 @@ export default function AdminLogin() {
   };
 
   const handleLoginSuccess = async () => {
-    try {
-      const userProfile = await authService.getProfile();
-      
-      if (Number(userProfile.role) === 0) {
-        login({
-          id: userProfile.id,
-          username: userProfile.username,
-          email: userProfile.email,
-          fullName: userProfile.fullName,
-          phoneNumber: userProfile.phoneNumber,
-          role: Number(userProfile.role)
-        });
-        
-        toast.success('Đăng nhập Admin thành công!');
-        localStorage.setItem('adminToken', 'dummy-token');
-        router.push('/admin/dashboard');
-      } else {
-        authService.logout();
-        setError('Tài khoản không có quyền admin');
-      }
-    } catch (error: any) {
-      setError('Không thể lấy thông tin người dùng');
+  try {
+    const userProfile = await authService.getProfile();
+
+    // Gọi API lấy quyền
+    const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
+    const res = await fetch(`http://localhost:5000/api/admin/user-permissions/${userProfile.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+
+    const userPermissions = data.permissions || [];
+
+    // ✅ Điều kiện cho phép vào Admin:
+    // - Là Admin role (role === 0)
+    // - Hoặc có ít nhất 1 quyền
+    if (Number(userProfile.role) === 0 || userPermissions.length > 0) {
+      login({
+        id: userProfile.id,
+        username: userProfile.username,
+        email: userProfile.email,
+        fullName: userProfile.fullName,
+        phoneNumber: userProfile.phoneNumber,
+        role: Number(userProfile.role)
+      });
+
+      toast.success('Đăng nhập Admin thành công!');
+      localStorage.setItem('adminToken', 'dummy-token');
+      router.push('/admin/dashboard');
+    } else {
+      authService.logout();
+      setError('Tài khoản không có quyền vào trang Admin');
     }
-  };
+  } catch (error: any) {
+    setError('Không thể lấy thông tin người dùng hoặc quyền');
+  }
+};
+
 
   const focusNextInput = (currentInput: HTMLInputElement, index: number) => {
     const parent = currentInput.parentElement;

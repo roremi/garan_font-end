@@ -17,7 +17,8 @@ import {
   MessageCircle,
   TicketPercent,
   Layers,
-  Boxes  
+  Boxes,
+  Edit2Icon
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,87 +31,96 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import path from 'path';
+import { useAuth } from '@/contexts/AuthContext';
 
 const menuItems = [
   {
     title: 'Dashboard',
     icon: LayoutDashboard,
-    path: '/admin/dashboard'
+    path: '/admin/dashboard',
+    requiredPermission: 'permission_view_dashboard'
   },
   {
     title: 'Quản lý sản phẩm',
     icon: ShoppingBag,
-    path: '/admin/products'
+    path: '/admin/products',
+    requiredPermission: 'permission_view_product'
   },
   {
     title: 'Quản lý danh mục',
     icon: FolderOpen,
-    path: '/admin/Category'
+    path: '/admin/Category',
+    requiredPermission: 'permission_view_category'
   },
   {
     title: 'Quản lý nhóm Combo',
     icon: Layers,
-    path: '/admin/ComboCategory'
+    path: '/admin/ComboCategory',
+    requiredPermission: 'permission_view_combocategory'
   },
   {
     title: 'Quản lý Combo',
     icon: FolderOpen,
-    path: '/admin/Combo'
+    path: '/admin/Combo',
+    requiredPermission: 'permission_view_combo'
   },
   {
     title: 'Quản lý đơn hàng',
     icon: ShoppingBag,
-    path: '/admin/orders'
+    path: '/admin/orders',
+    requiredPermission: 'permission_view_order'
   },
   {
     title: 'Quản lý voucher',
     icon: TicketPercent,
     path: '/admin/Voucher',
+    requiredPermission: 'permission_view_voucher'
   },
   {
     title: 'Quản lý shipping',
     icon: TicketPercent,
     path: '/admin/Shipping',
+    requiredPermission: 'permission_view_shipping'
   },
   {
     title: 'Quản lý người dùng',
     icon: Users,
-    path: '/admin/users'
+    path: '/admin/users',
+    requiredPermission: 'permission_view_allprofile'
   },
-   {
+  {
+    title: 'Quản lý quyền',
+    icon: Edit2Icon,
+    path: '/admin/permissions',
+    requiredPermission: 'permission_view_admin_page'
+  },
+  {
     title: 'Quản lý Driver',
     icon: Users,
-    path: '/admin/driver'
+    path: '/admin/driver',
+    requiredPermission: 'permission_view_driver'
   },
   {
     title: 'Quản lý tin nhắn',
     icon: MessageCircle,
-    path: '/admin/chat'
+    path: '/admin/chat',
+    requiredPermission: 'permission_manager_chat'
   },
   {
-    title: 'Maketting',
+    title: 'Marketing',
     icon: Boxes,
-    path: '/admin/maketting'
-  },
-  // {
-  //   title: 'Cài đặt',
-  //   icon: Settings,
-  //   path: '/admin/settings'
-  // }
+    path: '/admin/maketting',
+    requiredPermission: 'permission_view_admin_page'
+  }
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { permissions, user } = useAuth();
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -126,6 +136,8 @@ export default function AdminLayout({
     router.push('/admin/login');
   };
 
+  const canView = (perm: string) => permissions.includes(perm);
+
   if (!isAuthenticated) {
     return null;
   }
@@ -133,6 +145,12 @@ export default function AdminLayout({
   if (pathname === '/admin/login') {
     return children;
   }
+
+  // ✅ Nếu user là Admin (role === 0), hiển thị tất cả menu
+  const visibleMenuItems =
+    user && Number(user.role) === 0
+      ? menuItems
+      : menuItems.filter(item => canView(item.requiredPermission));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -159,9 +177,9 @@ export default function AdminLayout({
               <X className="h-5 w-5" />
             </Button>
           </div>
-          
+
           <div className="space-y-4">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map(item => (
               <Button
                 key={item.path}
                 variant={pathname === item.path ? "secondary" : "ghost"}
@@ -219,6 +237,7 @@ export default function AdminLayout({
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Thông báo */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
@@ -231,10 +250,10 @@ export default function AdminLayout({
                 <DropdownMenuContent align="end" className="w-[300px]">
                   <DropdownMenuLabel>Thông báo</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {/* Thông báo items */}
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2">
@@ -243,8 +262,8 @@ export default function AdminLayout({
                       <AvatarFallback>AD</AvatarFallback>
                     </Avatar>
                     <div className="hidden md:block text-left">
-                      <p className="text-sm font-medium">Admin User</p>
-                      <p className="text-xs text-gray-500">admin@example.com</p>
+                      <p className="text-sm font-medium">{user?.fullName || 'Admin'}</p>
+                      <p className="text-xs text-gray-500">{user?.email}</p>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
@@ -257,7 +276,6 @@ export default function AdminLayout({
                     <Settings className="mr-2 h-4 w-4" />
                     Cài đặt
                   </DropdownMenuItem>
-
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-red-500" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -270,9 +288,7 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
-          {children}
-        </main>
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );
