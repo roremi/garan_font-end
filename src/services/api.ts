@@ -1418,4 +1418,87 @@ createCustomerSegment: async (segmentData: {
   return response.json();
 },
 
+// Segmentation Rules APIs
+// Lấy danh sách tất cả quy tắc phân khúc
+getSegmentationRules: async () => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy danh sách quy tắc phân khúc');
+  return response.json();
+},
+
+// Lấy quy tắc phân khúc theo ID
+getSegmentationRuleById: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules/${id}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thông tin quy tắc phân khúc');
+  return response.json();
+},
+
+// Tạo quy tắc phân khúc mới
+createSegmentationRule: async (ruleData: {
+  name: string;
+  segmentType: string;
+  conditions: any;
+  priority: number;
+  isActive: boolean;
+}) => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(ruleData)
+  });
+  if (!response.ok) throw new Error('Không thể tạo quy tắc phân khúc');
+  return response.json();
+},
+
+// Cập nhật quy tắc phân khúc
+updateSegmentationRule: async (id: number, ruleData: {
+  name: string;
+  segmentType: string;
+  conditions: any;
+  priority: number;
+  isActive: boolean;
+}) => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(ruleData)
+  });
+  if (!response.ok) throw new Error('Không thể cập nhật quy tắc phân khúc');
+  return response.json();
+},
+
+// Xóa quy tắc phân khúc
+deleteSegmentationRule: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể xóa quy tắc phân khúc');
+  return response.json();
+},
+
+// Bật/tắt trạng thái quy tắc phân khúc
+toggleSegmentationRuleStatus: async (id: number) => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules/${id}/toggle`, {
+    method: 'PATCH',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể thay đổi trạng thái quy tắc phân khúc');
+  return response.json();
+},
+
+// Tạo quy tắc mặc định
+seedDefaultSegmentationRules: async () => {
+  const response = await fetch(`${API_URL}/admin/segmentation-rules/seed-default`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể tạo quy tắc mặc định');
+  return response.json();
+},
+
 };
