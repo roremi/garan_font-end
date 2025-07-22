@@ -111,6 +111,27 @@ interface RuleFormData {
   maxAverageOrderValue?: number;
 }
 
+// API format interface
+interface ApiRuleData {
+  name: string;
+  segmentType: string;
+  conditions: {
+    minTotalSpent?: number;
+    maxTotalSpent?: number;
+    minOrderCount?: number;
+    maxOrderCount?: number;
+    maxDaysSinceLastOrder?: number;
+    minDaysSinceLastOrder?: number;
+    minOrdersLast3Months?: number;
+    minOrdersLast6Months?: number;
+    minOrdersLast12Months?: number;
+    minAverageOrderValue?: number;
+    maxAverageOrderValue?: number;
+  };
+  priority: number;
+  isActive: boolean;
+}
+
 const SEGMENT_TYPES = [
   { value: 'VIP', label: 'VIP', color: 'bg-purple-100 text-purple-800' },
   { value: 'Loyal', label: 'Loyal', color: 'bg-blue-100 text-blue-800' },
@@ -139,6 +160,29 @@ export default function RulesComponent() {
     isActive: true
   });
 
+  // Convert form data to API format
+  const convertToApiFormat = (formData: RuleFormData): ApiRuleData => {
+    return {
+      name: formData.segmentName,
+      segmentType: formData.segmentName, // or different logic if needed
+      conditions: {
+        minTotalSpent: formData.minTotalSpent,
+        maxTotalSpent: formData.maxTotalSpent,
+        minOrderCount: formData.minOrderCount,
+        maxOrderCount: formData.maxOrderCount,
+        maxDaysSinceLastOrder: formData.maxDaysSinceLastOrder,
+        minDaysSinceLastOrder: formData.minDaysSinceLastOrder,
+        minOrdersLast3Months: formData.minOrdersLast3Months,
+        minOrdersLast6Months: formData.minOrdersLast6Months,
+        minOrdersLast12Months: formData.minOrdersLast12Months,
+        minAverageOrderValue: formData.minAverageOrderValue,
+        maxAverageOrderValue: formData.maxAverageOrderValue,
+      },
+      priority: formData.priority,
+      isActive: formData.isActive
+    };
+  };
+
   // Load rules
   const loadRules = async () => {
     try {
@@ -165,7 +209,8 @@ export default function RulesComponent() {
   // Create rule
   const handleCreate = async () => {
     try {
-      const response = await api.createSegmentationRule(formData);
+      const apiData = convertToApiFormat(formData);
+      const response = await api.createSegmentationRule(apiData);
       if (response.success) {
         toast({
           title: "Thành công",
@@ -190,7 +235,8 @@ export default function RulesComponent() {
     if (!editingRule) return;
     
     try {
-      const response = await api.updateSegmentationRule(editingRule.id, formData);
+      const apiData = convertToApiFormat(formData);
+      const response = await api.updateSegmentationRule(editingRule.id, apiData);
       if (response.success) {
         toast({
           title: "Thành công",
@@ -1375,7 +1421,7 @@ export default function RulesComponent() {
                   <div>
                     <Label className="text-sm font-medium">Ngày tạo</Label>
                     <p className="text-sm text-gray-600 mt-1">
-                      {viewingRule.createdAt ? formatDate(viewingRule.createdAt) : 'Không có'}
+                                          {viewingRule.createdAt ? formatDate(viewingRule.createdAt) : 'Không có'}
                     </p>
                   </div>
                   <div>
