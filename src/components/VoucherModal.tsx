@@ -28,7 +28,7 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({ isOpen, onClose, onS
     minimumOrderValue: 0,
     applyToShipping: false,
     expirationDate: `${today}T${timeNow}`,
-    status: 'Active',
+    isValid: true, // ✅ Thay status = 'Active'
   });
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export const VoucherModal: React.FC<VoucherModalProps> = ({ isOpen, onClose, onS
         minimumOrderValue: 0,
         applyToShipping: false,
         expirationDate: `${today}T${timeNow}`,
-        status: 'Active',
+        isValid: true, // ✅
       });
     }
   }, [voucher, mode]);
@@ -179,12 +179,21 @@ const handleSubmit = async () => {
 
           <label className="block">
             Trạng thái
-            <select name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border rounded">
-              <option value="Active">Hiển thị</option>
-              <option value="Inactive">Ẩn</option>
+            <select
+              name="isValid"
+              value={formData.isValid ? 'true' : 'false'}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  isValid: e.target.value === 'true',
+                }))
+              }
+              className="w-full p-2 border rounded"
+            >
+              <option value="true">Hiển thị</option>
+              <option value="false">Ẩn</option>
             </select>
           </label>
-
           <Button onClick={handleSubmit} className="w-full">Lưu</Button>
         </div>
       </DialogContent>
