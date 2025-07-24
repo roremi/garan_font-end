@@ -9,6 +9,6 @@ export interface Voucher {
     minimumOrderValue: number;
     applyToShipping: boolean;
     expirationDate: string;
-    status: string; // "Active" | "Inactive"
+    isValid: boolean;                      // ✅ THAY vì status
   }
   

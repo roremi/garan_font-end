@@ -119,7 +119,7 @@ export default function VouchersPage() {
                 <TableCell>{v.type}</TableCell>
                 <TableCell>{v.description}</TableCell>
                 <TableCell>{new Date(v.expirationDate).toLocaleDateString()}</TableCell>
-                <TableCell>{v.status}</TableCell>
+                <TableCell>{v.isValid}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="icon" onClick={() => openEditModal(v)}><Pencil className="h-4 w-4" /></Button>
