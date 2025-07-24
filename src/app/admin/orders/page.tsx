@@ -22,6 +22,7 @@ import {
 import { api } from '@/services/api';
 import { useToast } from "@/components/ui/use-toast";
 import type { OrderResponse, OrderDetailResponse } from '@/types/order';
+import { useSignalR } from "@/hooks/useSignalR"; // hoặc đường dẫn tương ứng
 
 // Phần 2: Định nghĩa cấu hình màu sắc và tên trạng thái đơn hàng
 const statusColors = {
@@ -50,12 +51,23 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const { toast } = useToast();
+  const { onNewOrder } = useSignalR(0, "Admin"); // userId và userName tùy theo bạn setup
 
   // Phần 4: useEffect để lấy danh sách đơn hàng
   useEffect(() => {
     fetchOrders();
-  }, []);
+  const unsubscribe = onNewOrder((newOrder: OrderResponse) => {
+    setOrders(prev => [newOrder, ...prev]);
 
+    toast({
+      title: "📦 Đơn hàng mới",
+      description: `Khách hàng ${newOrder.nameCustomer} vừa đặt đơn hàng mới (${newOrder.phone})`,
+    });
+  });
+
+  return unsubscribe;
+  }, []);
+  
   // Phần 5: Hàm lấy danh sách đơn hàng từ API
   const fetchOrders = async () => {
     try {
