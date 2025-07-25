@@ -28,6 +28,8 @@ const ALL_PERMISSIONS = [
   "permission_update_shipper",
   "permission_create_shipper",
   "permission_view_order",
+  "permission_view_combocategory",
+  "permission_view_shipping",
   "permission_view_combo",
   "permission_update_combo",
   "permission_delete_combo",
@@ -35,9 +37,11 @@ const ALL_PERMISSIONS = [
   "permission_create_comboproduct",
   "permission_update_comboproduct",
   "permission_delete_comboproduct",
+  "permission_view_category",
   "permission_delete_category",
   "permission_create_category",
   "permission_put_category",
+  "permission_view_driver",
   "permission_update_category",
 ];
 const PRESET_PERMISSIONS: Record<string, string[]> = {
@@ -103,16 +107,19 @@ export default function UserPermissionsPage() {
     }
   };
 
-  const openPermissionDialog = async (user: any) => {
-    try {
-      setSelectedUser(user);
-      setDialogOpen(true);
-      const data = await api.getUserPermissions(user.id);
-      setSelectedPermissions(data.permissions);
-    } catch (err: any) {
-      toast({ title: 'Lỗi tải quyền', description: err.message, variant: 'destructive' });
-    }
-  };
+const openPermissionDialog = async (user: any) => {
+  try {
+    setSelectedUser(user);
+
+    const data = await api.getUserPermissions(user.id);
+    setSelectedPermissions(data.permissions || []);
+
+    setDialogOpen(true); // 👉 Đặt sau khi dữ liệu đã được set
+  } catch (err: any) {
+    toast({ title: 'Lỗi tải quyền', description: err.message, variant: 'destructive' });
+  }
+};
+
 const getGroupedPermissions = () => {
   const groups: Record<string, any> = {};
 
@@ -129,6 +136,9 @@ const getGroupedPermissions = () => {
     else if (['update', 'put'].includes(action)) groups[entity].perms.update = perm;
     else if (['delete'].includes(action)) groups[entity].perms.delete = perm;
     else if (['create'].includes(action)) groups[entity].perms.create = perm;
+    else if (['manager'].includes(action)) groups[entity].perms.view = perm;
+    else if (['put'].includes(action)) groups[entity].perms.update = perm;
+
   });
 
   // Sort alphabetically by entity name
@@ -194,43 +204,43 @@ const getGroupedPermissions = () => {
 </div>
 
   <div className="overflow-x-auto mt-4">
-    <table className="w-full text-sm border">
-      <thead>
-        <tr className="bg-gray-100 text-left">
-          <th className="p-2">Thực thể</th>
-          <th className="p-2 text-center">View</th>
-          <th className="p-2 text-center">Update</th>
-          <th className="p-2 text-center">Delete</th>
-          <th className="p-2 text-center">Create</th>
-        </tr>
-      </thead>
-      <tbody>
-        {getGroupedPermissions().map(({ entity, perms }) => (
-          <tr key={entity} className="border-t">
-            <td className="p-2 font-medium">{entity}</td>
-            {['view', 'update', 'delete', 'create'].map((action) => {
-              const fullPerm = perms[action];
-              return (
-                <td key={action} className="p-2 text-center">
-                  {fullPerm ? (
-                    <div className="flex justify-center items-center gap-2">
-                      <Checkbox
-                        id={fullPerm}
-                        checked={selectedPermissions.includes(fullPerm)}
-                        onCheckedChange={() => togglePermission(fullPerm)}
-                      />
-                      <label htmlFor={fullPerm} className="hidden md:inline-block text-xs text-muted-foreground">{fullPerm}</label>
-                    </div>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-              );
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <table className="w-full text-sm border border-gray-200">
+  <thead>
+    <tr className="bg-gray-100 text-left">
+      <th className="p-2 font-semibold">Thực thể</th>
+      <th className="p-2 text-center w-24">View</th>
+      <th className="p-2 text-center w-24">Update</th>
+      <th className="p-2 text-center w-24">Delete</th>
+      <th className="p-2 text-center w-24">Create</th>
+    </tr>
+  </thead>
+  <tbody>
+    {getGroupedPermissions().map(({ entity, perms }) => (
+      <tr key={entity} className="border-t hover:bg-gray-50">
+        <td className="p-2 font-medium capitalize">{entity.replaceAll('_', ' ')}</td>
+        {['view', 'update', 'delete', 'create'].map((action) => {
+          const fullPerm = perms[action];
+          return (
+            <td key={action} className="p-2 text-center">
+              {fullPerm ? (
+                <div className="flex justify-center items-center">
+                <Checkbox
+                  id={fullPerm}
+                  checked={selectedPermissions.includes(fullPerm)} // ✅ Chính xác
+                  onCheckedChange={() => togglePermission(fullPerm)}
+                  title={fullPerm}
+                />
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    ))}
+  </tbody>
+</table>
   </div>
 
   <DialogFooter className="mt-6">

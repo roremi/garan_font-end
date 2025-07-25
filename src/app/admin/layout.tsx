@@ -17,19 +17,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSignalR } from '@/hooks/useSignalR';
 
 const menuItems = [
-  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', requiredPermission: 'permission_view_dashboard' },
-  { title: 'Quản lý sản phẩm', icon: ShoppingBag, path: '/admin/products', requiredPermission: 'permission_view_product' },
-  { title: 'Quản lý danh mục', icon: FolderOpen, path: '/admin/Category', requiredPermission: 'permission_view_category' },
-  { title: 'Quản lý nhóm Combo', icon: Layers, path: '/admin/ComboCategory', requiredPermission: 'permission_view_combocategory' },
-  { title: 'Quản lý Combo', icon: FolderOpen, path: '/admin/Combo', requiredPermission: 'permission_view_combo' },
-  { title: 'Quản lý đơn hàng', icon: ShoppingBag, path: '/admin/orders', requiredPermission: 'permission_view_order' },
-  { title: 'Quản lý voucher', icon: TicketPercent, path: '/admin/Voucher', requiredPermission: 'permission_view_voucher' },
-  { title: 'Quản lý shipping', icon: TicketPercent, path: '/admin/Shipping', requiredPermission: 'permission_view_shipping' },
-  { title: 'Quản lý người dùng', icon: Users, path: '/admin/users', requiredPermission: 'permission_view_allprofile' },
-  { title: 'Quản lý quyền', icon: Edit2Icon, path: '/admin/permissions', requiredPermission: 'permission_view_admin_page' },
-  { title: 'Quản lý Driver', icon: Users, path: '/admin/driver', requiredPermission: 'permission_view_driver' },
-  { title: 'Quản lý tin nhắn', icon: MessageCircle, path: '/admin/chat', requiredPermission: 'permission_manager_chat' },
-  { title: 'Marketing', icon: Boxes, path: '/admin/maketting', requiredPermission: 'permission_view_admin_page' }
+  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
+  { title: 'Quản lý sản phẩm', icon: ShoppingBag, path: '/admin/products' },
+  { title: 'Quản lý danh mục', icon: FolderOpen, path: '/admin/Category' },
+  { title: 'Quản lý nhóm Combo', icon: Layers, path: '/admin/ComboCategory' },
+  { title: 'Quản lý Combo', icon: FolderOpen, path: '/admin/Combo' },
+  { title: 'Quản lý đơn hàng', icon: ShoppingBag, path: '/admin/orders' },
+  { title: 'Quản lý voucher', icon: TicketPercent, path: '/admin/Voucher' },
+  { title: 'Quản lý shipping', icon: TicketPercent, path: '/admin/Shipping' },
+  { title: 'Quản lý người dùng', icon: Users, path: '/admin/users' },
+  { title: 'Quản lý quyền', icon: Edit2Icon, path: '/admin/permissions' },
+  { title: 'Quản lý Driver', icon: Users, path: '/admin/driver' },
+  { title: 'Quản lý tin nhắn', icon: MessageCircle, path: '/admin/chat' },
+  { title: 'Marketing', icon: Boxes, path: '/admin/maketting' }
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -38,13 +38,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { permissions, user } = useAuth();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<{ message: string; time: string }[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { onNewOrder } = useSignalR(user?.id || 0, user?.fullName || '');
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
 
-  // ✅ Bật âm thanh khi user có tương tác đầu tiên
   useEffect(() => {
     const enableSound = () => {
       setIsSoundEnabled(true);
@@ -54,7 +53,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener('click', enableSound);
   }, []);
 
-  // ✅ Kiểm tra token và điều hướng login nếu chưa đăng nhập
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token && pathname !== '/admin/login') {
@@ -64,7 +62,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [pathname, router]);
 
-  // ✅ Đăng ký lắng nghe sự kiện đơn hàng mới từ SignalR
   useEffect(() => {
     const unsubscribe = onNewOrder((order) => {
       const newNotification = {
@@ -75,7 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       if (isSoundEnabled && audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch((err: unknown) =>
+        audioRef.current.play().catch(err =>
           console.error('Không thể phát âm thanh:', err)
         );
       }
@@ -91,14 +88,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push('/admin/login');
   };
 
-  const canView = (perm: string) => permissions.includes(perm);
   if (!isAuthenticated) return null;
   if (pathname === '/admin/login') return children;
-
-  const visibleMenuItems =
-    user && Number(user.role) === 0
-      ? menuItems
-      : menuItems.filter(item => canView(item.requiredPermission));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -112,7 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
           </div>
           <div className="space-y-4">
-            {visibleMenuItems.map(item => (
+            {menuItems.map(item => (
               <Button
                 key={item.path}
                 variant={pathname === item.path ? "secondary" : "ghost"}
@@ -142,7 +133,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Input placeholder="Tìm kiếm..." className="w-[300px]" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
           <div className="flex items-center gap-4">
-            {/* Thông báo */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -161,21 +151,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <p className="text-gray-500 text-sm p-2">Không có thông báo</p>
                 ) : (
                   notifications.map((n, i) => (
-                          <DropdownMenuItem
-                            key={i}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              router.push('/admin/orders');
-                              setTimeout(() => {
-                                window.location.reload();
-                              }, 300); // Delay nhẹ để đảm bảo điều hướng xong mới reload
-                            }}
-                          >
-                            <div>
-                              <p>{n.message}</p>
-                              <span className="text-xs text-gray-400">{n.time}</span>
-                            </div>
-                          </DropdownMenuItem>
+                    <DropdownMenuItem
+                      key={i}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        router.push('/admin/orders');
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 300);
+                      }}
+                    >
+                      <div>
+                        <p>{n.message}</p>
+                        <span className="text-xs text-gray-400">{n.time}</span>
+                      </div>
+                    </DropdownMenuItem>
                   ))
                 )}
               </DropdownMenuContent>
@@ -214,7 +204,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="p-6">{children}</main>
       </div>
 
-      {/* ✅ Audio preload */}
       <audio ref={audioRef} src="/sounds/noffitication.mp3" preload="auto" />
     </div>
   );
