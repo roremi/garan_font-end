@@ -999,12 +999,28 @@ getUserVouchers: async (userId: number) => {
   return response.json();
 },
 
-saveUserVoucher: async (userId: number, voucherId: string) => {
-  const response = await fetch(`${API_URL}/UserVoucher/save?userId=${userId}&voucherId=${voucherId}`, {
+saveUserVoucher: async (userId: number, voucherId?: string, voucherCode?: string) => {
+  const body: any = { userId };
+  
+  if (voucherId) {
+    body.voucherId = parseInt(voucherId);
+  } else if (voucherCode) {
+    body.voucherCode = voucherCode;
+  } else {
+    throw new Error("Phải cung cấp voucherId hoặc voucherCode");
+  }
+
+  const response = await fetch(`${API_URL}/UserVoucher/save`, {
     method: 'POST',
-    headers: getHeaders()
+    headers: getHeaders(),
+    body: JSON.stringify(body)
   });
-  if (!response.ok) throw new Error("Không thể lưu voucher");
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Không thể lưu voucher");
+  }
+  
   return response.json();
 },
 
