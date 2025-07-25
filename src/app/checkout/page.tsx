@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Ticket } from "lucide-react";
 import { api } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
-import { toast } from 'sonner';import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { OrderCreateRequest } from '@/types/order';
@@ -49,6 +50,12 @@ export default function CheckoutPage() {
   const [selectedVoucher, setSelectedVoucher] = useState<{ discount?: Voucher; shipping?: Voucher }>({});
   const [idVoucherDiscount, setIdVoucherDiscount] = useState<string | undefined>();
   const [idVoucherShipping, setIdVoucherShipping] = useState<string | undefined>();
+  
+  // Phần 4.1: State mới cho tính năng nhập mã voucher
+  const [voucherCode, setVoucherCode] = useState('');
+  const [isAddingVoucher, setIsAddingVoucher] = useState(false);
+  const [showVoucherInput, setShowVoucherInput] = useState(false);
+  
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     phone: user?.phoneNumber || '',
@@ -61,7 +68,7 @@ export default function CheckoutPage() {
   // Phần 5: Kiểm tra đăng nhập và chuyển hướng nếu chưa đăng nhập
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-    toast.error(`Vui lòng đăng nhập!`);
+      toast.error(`Vui lòng đăng nhập!`);
       router.push('/auth/login');
     }
   }, [isAuthenticated, router, toast]);
@@ -104,30 +111,34 @@ export default function CheckoutPage() {
     refreshDefaultAddress();
   }, [refreshDefaultAddress]);
 
-  // Phần 8: Tính tiền ship
-//   useEffect(() => {
-//   const fetchDistance = async () => {
-//     if (defaultAddress && user?.id && defaultAddress.latitude && defaultAddress.longitude) {
-//       try {
-//         const result = await api.calculateShippingFee(
-//           user.id,
-//           defaultAddress.latitude,
-//           defaultAddress.longitude
-//         );
-//         setDistanceKm(result.distanceKm);
-//         setFinalShippingFee(result.shippingFee);
-//         setTotalAmount(subtotal + result.shippingFee - discountAmount);
-//       } catch (error) {
-//         console.error("Lỗi khi tính phí vận chuyển:", error);
-//         setDistanceKm(null);
-//         setFinalShippingFee(0);
-//         setTotalAmount(subtotal);
-//       }
-//     }
-//   };
-//   fetchDistance();
-// }, [defaultAddress, user?.id, subtotal, discountAmount]);
+  // Phần 8.1: Hàm xử lý thêm voucher bằng mã code - ĐÃ SỬA
+  const handleAddVoucherByCode = async () => {
+    if (!voucherCode.trim()) {
+      toast.error('Vui lòng nhập mã voucher!');
+      return;
+    }
 
+    if (!user?.id) {
+      toast.error('Vui lòng đăng nhập để sử dụng voucher!');
+      return;
+    }
+
+    setIsAddingVoucher(true);
+    try {
+      // ✅ SỬA: Gọi API với voucherCode thay vì voucherId
+      await api.saveUserVoucher(user.id, undefined, voucherCode.trim());
+      toast.success('Thêm voucher thành công! Bạn có thể chọn voucher trong danh sách.');
+      setVoucherCode('');
+      setShowVoucherInput(false);
+      // Optionally refresh voucher list in VoucherSelector component
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Không thể thêm voucher. Vui lòng kiểm tra lại mã voucher.';
+      toast.error(errorMessage);
+      console.error('Lỗi khi thêm voucher:', error);
+    } finally {
+      setIsAddingVoucher(false);
+    }
+  };
 
   //Phần 9: Hàm tính phí vận chuyển
   const calculateShippingFeeByAddress = useCallback(async (
@@ -154,7 +165,7 @@ export default function CheckoutPage() {
         toast.error(`Lỗi Voucher giảm giá!`);
       }
       if (response.shipping_voucher_error) {
-       toast.error(`Lỗi Voucher vận chuyển!`);
+        toast.error(`Lỗi Voucher vận chuyển!`);
       }
     } catch (error) {
       console.error('Lỗi khi tính phí vận chuyển:', error);
@@ -254,14 +265,16 @@ export default function CheckoutPage() {
   // Phần 13: Xử lý submit form đặt hàng
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-     if (isSubmitting) return; // ⛔ Đã submit thì không cho ấn nữa
-     setIsSubmitting(true); // ✅ Đánh dấu đang xử lý
+    if (isSubmitting) return; // ⛔ Đã submit thì không cho ấn nữa
+    setIsSubmitting(true); // ✅ Đánh dấu đang xử lý
     if (!isAuthenticated || !user) {
       toast.error(`Vui lòng đăng nhập để tiếp tục thanh toán!`);
+      setIsSubmitting(false);
       return;
     }
     if (!defaultAddress) {
       toast.error(`Vui lòng chọn địa chỉ nhận hàng!`);
+      setIsSubmitting(false);
       return;
     }
     try {
@@ -295,33 +308,33 @@ export default function CheckoutPage() {
         router.push('/');
       }
     } catch (error: any) {
-        const rawMessage = error?.message || "Có lỗi xảy ra khi đặt hàng";
+      const rawMessage = error?.message || "Có lỗi xảy ra khi đặt hàng";
 
-        if (rawMessage.includes("chưa thanh toán")) {
-          toast.error(`Vui lòng kiểm tra đơn hàng gần nhất đã hoàn thành chưa!`);
-
-          setTimeout(() => {
-            router.push("/");
-          }, 3000);
-          return;
-        }
-
-        toast.error(rawMessage);
+      if (rawMessage.includes("chưa thanh toán")) {
+        toast.error(`Vui lòng kiểm tra đơn hàng gần nhất đã hoàn thành chưa!`);
+        setTimeout(() => {
+          router.push("/");
+        }, 3000);
+        return;
       }
-};
+      toast.error(rawMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Phần 14: Render giao diện người dùng
-if (isLoading) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <p className="text-gray-500 text-sm">Đang kiểm tra đăng nhập...</p>
-    </div>
-  );
-}
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <p className="text-gray-500 text-sm">Đang kiểm tra đăng nhập...</p>
+      </div>
+    );
+  }
 
-if (!isAuthenticated) {
-  return null; // hoặc để trống vì đã redirect ở useEffect
-}
+  if (!isAuthenticated) {
+    return null; // hoặc để trống vì đã redirect ở useEffect
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -417,30 +430,100 @@ if (!isAuthenticated) {
                         </div>
                       )}
                     </div>
-                    <div className="mb-6">
-                      <Label className="block mb-2">Chọn Voucher</Label>
+                    
+                    {/* Phần mới: Chọn và thêm Voucher */}
+                    <div className="mb-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="block">Chọn Voucher</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowVoucherInput(!showVoucherInput)}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Thêm mã voucher
+                        </Button>
+                      </div>
+                      
+                      {/* Form nhập mã voucher */}
+                      {showVoucherInput && (
+                        <div className="p-4 bg-gray-50 rounded-lg border space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Ticket className="h-5 w-5 text-orange-600" />
+                            <Label className="font-medium">Nhập mã voucher</Label>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Nhập mã voucher..."
+                              value={voucherCode}
+                              onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                              className="flex-1"
+                              disabled={isAddingVoucher}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddVoucherByCode();
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              onClick={handleAddVoucherByCode}
+                              disabled={isAddingVoucher || !voucherCode.trim()}
+                              className="px-6"
+                            >
+                              {isAddingVoucher ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Đang thêm...
+                                </>
+                              ) : (
+                                'Thêm'
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Nhập mã voucher để thêm vào tài khoản của bạn
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Component chọn voucher hiện tại */}
                       <VoucherSelector
                         subtotal={subtotal}
                         onSelect={(voucher) => {
                           setSelectedVoucher(voucher);
-                          toast.error(voucher.discount?.description || voucher.shipping?.description || "Đã áp dụng voucher");
+                          toast.success(voucher.discount?.description || voucher.shipping?.description || "Đã áp dụng voucher");
                         }}
                         onIdChange={({ idVoucherDiscount, idVoucherShipping }) => {
                           setIdVoucherDiscount(idVoucherDiscount);
                           setIdVoucherShipping(idVoucherShipping);
                         }}
                       />
+                      
+                      {/* Hiển thị voucher đã chọn */}
                       {selectedVoucher.discount && (
-                        <div className="text-sm text-green-700">
-                          Đã chọn: <strong>{selectedVoucher.discount.code}</strong> - {selectedVoucher.discount.description}
+                        <div className="text-sm text-green-700 bg-green-50 p-3 rounded-lg border border-green-200">
+                          <div className="flex items-center gap-2">
+                            <Ticket className="h-4 w-4" />
+                            <span>Voucher giảm giá: <strong>{selectedVoucher.discount.code}</strong></span>
+                          </div>
+                          <p className="mt-1">{selectedVoucher.discount.description}</p>
                         </div>
                       )}
                       {selectedVoucher.shipping && (
-                        <div className="text-sm text-green-700">
-                          Đã chọn: <strong>{selectedVoucher.shipping.code}</strong> - {selectedVoucher.shipping.description}
+                        <div className="text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <div className="flex items-center gap-2">
+                            <Ticket className="h-4 w-4" />
+                            <span>Voucher vận chuyển: <strong>{selectedVoucher.shipping.code}</strong></span>
+                          </div>
+                          <p className="mt-1">{selectedVoucher.shipping.description}</p>
                         </div>
                       )}
                     </div>
+                    
                     <div>
                       <Label>Phương thức thanh toán</Label>
                       <RadioGroup
@@ -472,7 +555,6 @@ if (!isAuthenticated) {
                       "Đặt hàng"
                     )}
                   </Button>
-
                 </form>
               </div>
               <div className="bg-white p-6 rounded-lg shadow h-fit">
@@ -536,15 +618,6 @@ if (!isAuthenticated) {
                   setShowAddressDialog(false);
                   const fullAddress = `${addr.detail}, ${addr.wardName}, ${addr.districtName}, ${addr.provinceName}`;
                   setFormData(prev => ({ ...prev, address: fullAddress }));
-                  if (user?.id) {
-                    // calculateShippingFeeByAddress(
-                    //   user.id,
-                    //   addr.id,
-                    //   subtotal,
-                    //   idVoucherDiscount,
-                    //   idVoucherShipping
-                    // );
-                  }
                 }}
                 onRefresh={refreshDefaultAddress}
               />
