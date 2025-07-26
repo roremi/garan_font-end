@@ -94,7 +94,10 @@ export default function UserPermissionsPage() {
   const loadUsers = async () => {
     try {
       const allUsers = await api.getAllUserProfiles();
-      const filteredUsers = allUsers.filter(u => Number(u.role) !== 0); // loại admin
+      const filteredUsers = allUsers.filter(u => {
+      const role = Number(u.role);
+      return role !== 0 && role !== 2;
+    });
       setUsers(filteredUsers);
     } catch (err: any) {
       toast({ title: 'Lỗi tải danh sách user', description: err.message, variant: 'destructive' });
@@ -127,6 +130,7 @@ const getGroupedPermissions = () => {
 
     if (['view'].includes(action)) groups[entity].perms.view = perm;
     else if (['update', 'put'].includes(action)) groups[entity].perms.update = perm;
+    else if (['manager'].includes(action)) groups[entity].perms.update = perm;
     else if (['delete'].includes(action)) groups[entity].perms.delete = perm;
     else if (['create'].includes(action)) groups[entity].perms.create = perm;
   });
@@ -181,48 +185,54 @@ const getGroupedPermissions = () => {
   <DialogHeader>
     <DialogTitle>Cấp quyền cho {selectedUser?.username}</DialogTitle>
   </DialogHeader>
-<div className="flex flex-wrap gap-2 mb-4">
-  {Object.keys(PRESET_PERMISSIONS).map(role => (
-    <Button
-      key={role}
-      variant="outline"
-      onClick={() => applyPreset(role)}
-    >
-      Chọn quyền {role}
-    </Button>
-  ))}
-</div>
+
+  <div className="flex flex-wrap gap-2 mb-4">
+    {Object.keys(PRESET_PERMISSIONS).map(role => (
+      <Button
+        key={role}
+        variant="outline"
+        onClick={() => applyPreset(role)}
+      >
+        Chọn quyền {role}
+      </Button>
+    ))}
+  </div>
 
   <div className="overflow-x-auto mt-4">
-    <table className="w-full text-sm border">
+    <table className="w-full text-sm border font-mono">
       <thead>
         <tr className="bg-gray-100 text-left">
           <th className="p-2">Thực thể</th>
-          <th className="p-2 text-center">View</th>
-          <th className="p-2 text-center">Update</th>
-          <th className="p-2 text-center">Delete</th>
-          <th className="p-2 text-center">Create</th>
+          <th className="p-2 text-left">View</th>
+          <th className="p-2 text-left">Update</th>
+          <th className="p-2 text-left">Delete</th>
+          <th className="p-2 text-left">Create</th>
         </tr>
       </thead>
       <tbody>
         {getGroupedPermissions().map(({ entity, perms }) => (
           <tr key={entity} className="border-t">
-            <td className="p-2 font-medium">{entity}</td>
+            <td className="p-2 font-semibold capitalize">{entity.replace(/_/g, ' ')}</td>
             {['view', 'update', 'delete', 'create'].map((action) => {
               const fullPerm = perms[action];
               return (
-                <td key={action} className="p-2 text-center">
+                <td key={action} className="p-2 align-top">
                   {fullPerm ? (
-                    <div className="flex justify-center items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <Checkbox
                         id={fullPerm}
                         checked={selectedPermissions.includes(fullPerm)}
                         onCheckedChange={() => togglePermission(fullPerm)}
                       />
-                      <label htmlFor={fullPerm} className="hidden md:inline-block text-xs text-muted-foreground">{fullPerm}</label>
+                      <label
+                        htmlFor={fullPerm}
+                        className="text-xs text-muted-foreground break-all font-mono"
+                      >
+                        {fullPerm}
+                      </label>
                     </div>
                   ) : (
-                    "-"
+                    <span className="text-muted-foreground">-</span>
                   )}
                 </td>
               );
@@ -238,6 +248,7 @@ const getGroupedPermissions = () => {
     <Button variant="outline" onClick={() => setDialogOpen(false)}>Đóng</Button>
   </DialogFooter>
 </DialogContent>
+
 
       </Dialog>
     </div>
