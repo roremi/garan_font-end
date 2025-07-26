@@ -382,37 +382,37 @@ class AuthService {
       throw new Error('Có lỗi xảy ra khi gửi mã xác thực');
     }
   }
-  async updateUserProfile(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
-    try {
-      const token = storage.getItem('token');
-      if (!token) throw new Error('Không tìm thấy token');
-      
-      // Kiểm tra người dùng hiện tại có quyền admin không
-      const currentUser = await this.getProfile();
+async updateUserProfile(id: number, data: Partial<UserProfile>): Promise<UserProfile> {
+  try {
+    const token = storage.getItem('token');
+    if (!token) throw new Error('Không tìm thấy token');
+    
+    const response = await fetch(`${API_URL}/User/updateforcustomer/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
 
-    
-      // Đảm bảo role là chuỗi
-    
-      const response = await fetch(`${API_URL}/User/updateforcustomer/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Thêm dòng này để gửi kèm credentials (cookie, v.v.)
-        body: JSON.stringify(data),
-      });
-    
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Cập nhật thông tin thất bại');
-      }
-    
-      return await response.json();
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Cập nhật thông tin thất bại');
     }
+
+    const updatedUser = await response.json();
+
+    // Logout ngay sau khi cập nhật thành công
+    this.logout();
+
+    return updatedUser;
+  } catch (error) {
+    throw error;
   }
+}
+
 
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
@@ -776,6 +776,8 @@ async deleteShipper(id: number): Promise<any> {
     storage.removeItem('token');
     storage.removeItem('adminToken');
     storage.removeItem('app_token');
+    storage.removeItem('user');
+    window.location.href = '/';
   }
 
   isAuthenticated(): boolean {
