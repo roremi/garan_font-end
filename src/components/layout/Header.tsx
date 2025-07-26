@@ -97,7 +97,11 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/">
-              <h1 className="text-xl font-bold text-orange-600">Cục Tác Chicken</h1>
+              <img 
+              src="images/logo.png" 
+              alt="Cục Tác Chicken" 
+              className="h-14 w-auto"
+              />
             </Link>
           </div>
           
