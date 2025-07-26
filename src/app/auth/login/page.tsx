@@ -353,22 +353,6 @@ export default function LoginPage() {
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => handleSocialLogin('Facebook')}
-                  >
-                    <Facebook className="h-5 w-5 mr-2" />
-                    Facebook
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => handleSocialLogin('Github')}
-                  >
-                    <Github className="h-5 w-5 mr-2" />
-                    Github
-                  </Button>
                   <GoogleLogin
   onSuccess={(credentialResponse) => {
     if (credentialResponse.credential) {
