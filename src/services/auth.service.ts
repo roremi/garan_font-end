@@ -393,7 +393,7 @@ class AuthService {
     
       // Đảm bảo role là chuỗi
     
-      const response = await fetch(`${API_URL}/User/update/${id}`, {
+      const response = await fetch(`${API_URL}/User/updateforcustomer/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
