@@ -48,7 +48,6 @@ const ORDER_STATUS: OrderStatusMap = {
   2: { label: 'Đang giao hàng', color: 'info' },
   3: { label: 'Hoàn thành', color: 'success' },
   4: { label: 'Đã hủy', color: 'destructive' },
-  5: {label: 'Chờ thanh toán', color: 'warning'}
 };
 
 // Phần 3: Component chính OrderHistory
@@ -308,9 +307,11 @@ if (!isAuthenticated) {
                     <TabsList className="flex w-full min-w-max border-b">
                       <TabsTrigger value="all" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Tất cả</TabsTrigger>
                       <TabsTrigger value="0" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Chờ xác nhận</TabsTrigger>
-                      <TabsTrigger value="1" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đang giao hàng</TabsTrigger>
-                      <TabsTrigger value="2" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đã hoàn thành</TabsTrigger>
-                      <TabsTrigger value="3" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đã hủy</TabsTrigger>
+                      <TabsTrigger value="1" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Chờ giao hàng</TabsTrigger>
+                      <TabsTrigger value="2" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đang giao hàng</TabsTrigger>
+                      <TabsTrigger value="3" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đã hoàn thành</TabsTrigger>
+                      <TabsTrigger value="4" className="px-4 py-2 font-semibold whitespace-nowrap border-b-2 border-transparent data-[state=active]:border-black">Đã hủy</TabsTrigger>
+
                     </TabsList>
                   </Tabs>
                 </div>
@@ -322,7 +323,7 @@ if (!isAuthenticated) {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50/50">
-                      <TableHead className="font-semibold">Mã đơn hàng</TableHead>
+                      <TableHead className="font-semibold">STT</TableHead>
                       <TableHead className="font-semibold">Ngày đặt</TableHead>
                       <TableHead className="font-semibold">Tổng tiền</TableHead>
                       <TableHead className="font-semibold">Trạng thái</TableHead>
@@ -330,9 +331,9 @@ if (!isAuthenticated) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders.map((order) => (
+                    {filteredOrders.map((order, index) => (
                       <TableRow key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                        <TableCell className="font-medium">#{order.id}</TableCell>
+                        <TableCell className="font-medium">#{index + 1}</TableCell>
                         <TableCell>{formatDate(order.createAt)}</TableCell>
                         <TableCell className="font-medium">
                           {formatCurrency(order.total)}
@@ -371,7 +372,7 @@ if (!isAuthenticated) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Chi tiết đơn hàng #{viewOrder.id}</h2>
+              <h2 className="text-xl font-bold">Chi tiết đơn hàng</h2>
               <Button variant="outline" size="sm" onClick={() => setViewOrder(null)}>
                 ✕
               </Button>

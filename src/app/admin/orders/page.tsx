@@ -22,7 +22,6 @@ import {
 import { api } from '@/services/api';
 import { useToast } from "@/components/ui/use-toast";
 import type { OrderResponse, OrderDetailResponse } from '@/types/order';
-import { useSignalR } from "@/hooks/useSignalR"; // hoặc đường dẫn tương ứng
 
 // Phần 2: Định nghĩa cấu hình màu sắc và tên trạng thái đơn hàng
 const statusColors = {
@@ -46,28 +45,22 @@ export default function OrdersPage() {
   // Khai báo state
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedDate, setSelectedDate] = useState('today');
+  const [selectedDate, setSelectedDate] = useState('all');
   const [viewOrder, setViewOrder] = useState<OrderResponse & { details?: OrderDetailResponse[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const { toast } = useToast();
-  const { onNewOrder } = useSignalR(0, "Admin"); // userId và userName tùy theo bạn setup
+  const [searchId, setSearchId] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [searchEmail, setSearchEmail] = useState('');
+
+
 
   // Phần 4: useEffect để lấy danh sách đơn hàng
   useEffect(() => {
     fetchOrders();
-  const unsubscribe = onNewOrder((newOrder: OrderResponse) => {
-    setOrders(prev => [newOrder, ...prev]);
-
-    toast({
-      title: "📦 Đơn hàng mới",
-      description: `Khách hàng ${newOrder.nameCustomer} vừa đặt đơn hàng mới (${newOrder.phone})`,
-    });
-  });
-
-  return unsubscribe;
   }, []);
-  
+
   // Phần 5: Hàm lấy danh sách đơn hàng từ API
   const fetchOrders = async () => {
     try {
@@ -158,44 +151,77 @@ export default function OrdersPage() {
 
   // Phần 8: Lọc đơn hàng theo trạng thái và ngày
   const filteredOrders = orders.filter(order => {
-    if (selectedStatus !== 'all' && order.status !== parseInt(selectedStatus)) return false;
-    
-    if (selectedDate !== 'all') {
-      const orderDate = new Date(order.createAt);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+  // Lọc theo trạng thái
+  if (selectedStatus !== 'all' && order.status !== parseInt(selectedStatus)) return false;
 
-      switch (selectedDate) {
-        case 'today':
-          return orderDate.toDateString() === today.toDateString();
-          
-        case 'week':
-          const firstDayOfWeek = new Date(today);
-          firstDayOfWeek.setDate(today.getDate() - today.getDay());
-          firstDayOfWeek.setHours(0, 0, 0, 0);
-          
-          const lastDayOfWeek = new Date(firstDayOfWeek);
-          lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-          lastDayOfWeek.setHours(23, 59, 59, 999);
-          
-          return orderDate >= firstDayOfWeek && orderDate <= lastDayOfWeek;
-          
-        case 'month':
-          const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-          const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-          lastDayOfMonth.setHours(23, 59, 59, 999);
-          
-          return orderDate >= firstDayOfMonth && orderDate <= lastDayOfMonth;
-      }
+  // Lọc theo ngày
+  if (selectedDate !== 'all') {
+    const orderDate = new Date(order.createAt);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    switch (selectedDate) {
+      case 'today':
+        if (orderDate.toDateString() !== today.toDateString()) return false;
+        break;
+      case 'week':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        if (orderDate < startOfWeek || orderDate > endOfWeek) return false;
+        break;
+      case 'month':
+        const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        lastOfMonth.setHours(23, 59, 59, 999);
+        if (orderDate < firstOfMonth || orderDate > lastOfMonth) return false;
+        break;
     }
-    return true;
-  });
+  }
+
+  // Lọc theo tìm kiếm (ID, tên khách, email)
+  const idMatch = searchId === '' || order.id.toString().includes(searchId);
+  const nameMatch = searchName === '' || order.nameCustomer?.toLowerCase().includes(searchName.toLowerCase());
+  const emailMatch = searchEmail === '' || order.email?.toLowerCase().includes(searchEmail.toLowerCase());
+  return idMatch && nameMatch && emailMatch;
+});
+
+
+  
 
   // Phần 9: Render giao diện chính
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Quản lý đơn hàng</h1>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold">Quản lý đơn hàng</h1>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Tìm theo ID"
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              className="border border-gray-300 px-3 py-1 rounded-md w-[120px]"
+            />
+            <input
+              type="text"
+              placeholder="Tìm theo tên"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              className="border border-gray-300 px-3 py-1 rounded-md w-[160px]"
+            />
+            <input
+              type="text"
+              placeholder="Tìm theo email"
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              className="border border-gray-300 px-3 py-1 rounded-md w-[200px]"
+            />
+          </div>
+
+        </div>
         
         <div className="flex gap-4">
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
