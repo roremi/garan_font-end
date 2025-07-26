@@ -160,6 +160,8 @@ export default function ProfilePage() {
       const UserId = Number(user?.id)
       await authService.updateUserProfile(UserId,profileData);
       toast.success('Cập nhật thông tin thành công');
+      logout();
+      router.push('/auth/login');
       setIsEditing(false);
     } catch (error: any) {
       toast.error(error.message || 'Có lỗi xảy ra khi cập nhật thông tin');
