@@ -72,6 +72,9 @@ export default function Dashboard() {
   const [inventoryData, setInventoryData] = useState<any[]>([]);
   const [inventoryColumns, setInventoryColumns] = useState<{ label: string; key: string }[]>([]);
   const [inventoryType, setInventoryType] = useState<'revenue' | 'bestsellers' | 'status' | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any[]>([]);
+
 
 
 
@@ -128,6 +131,7 @@ export default function Dashboard() {
 
       setInventoryTitle('Bảng kiểm kê sản phẩm bán chạy');
       setInventoryColumns([
+        { label: 'Ngày', key: 'date' },
         { label: 'Tên sản phẩm', key: 'name' },
         { label: 'Số lượng đã bán', key: 'totalQuantity' },
         { label: 'Loại', key: 'type' }
@@ -139,40 +143,52 @@ export default function Dashboard() {
       console.error('Lỗi khi mở kiểm kê sản phẩm:', error);
     }
   };
-  // Hàm mở bảng trạng thái đơn hàng
-  const handleOpenOrderStatusInventory = async () => {
+
+  const handleViewOrderDetailFromInventory = async (row: any) => {
+  try {
+    setSelectedOrder(row);
+    const res = await api.getOrderDetails(row.id); // gọi đúng API
+    if (res.status === 200) {
+      setOrderDetails(res.data);
+    } else {
+      setOrderDetails([]);
+    }
+  } catch (err) {
+    console.error("Lỗi lấy chi tiết đơn:", err);
+    setOrderDetails([]);
+  }
+};
+
+ const handleOpenOrderStatusInventory = async () => {
   try {
     const fromStr = format(fromDate, 'yyyy-MM-dd');
     const toStr = format(toDate, 'yyyy-MM-dd');
-    const rawData = await api.getOrderStatusTable(fromStr, toStr);
+    const raw = await api.getOrderStatusTable(fromStr, toStr); // danh sách đơn chi tiết
 
-    // Flatten dữ liệu
-    const flattened = rawData
-      .flatMap((entry: any) =>
-        entry.statuses.map((s: any) => ({
-          statusLabel: getStatusLabel(s.status),
-          count: s.count
-        }))
-      )
-      .reduce((acc: any[], curr: any) => {
-        const existing = acc.find((x) => x.statusLabel === curr.statusLabel);
-        if (existing) {
-          existing.count += curr.count;
-        } else {
-          acc.push({ ...curr });
-        }
-        return acc;
-      }, []);
+    const data = raw.map((o: any) => ({
+      id: o.id,
+      date: o.date,
+      customer: o.customerName,
+      statusLabel: getStatusLabel(o.status),
+      total: o.total?.toLocaleString() + 'đ',
+      address: o.address,
+      driver: o.driverName || '—'
+    }));
 
-    setInventoryTitle('Bảng kiểm kê trạng thái đơn hàng');
+    setInventoryTitle('Chi tiết đơn hàng');
     setInventoryColumns([
+      { label: 'Mã đơn', key: 'id' },
+      { label: 'Thời gian', key: 'date' },
+      { label: 'Khách hàng', key: 'customer' },
       { label: 'Trạng thái', key: 'statusLabel' },
-      { label: 'Số đơn hàng', key: 'count' }
+      { label: 'Tổng tiền', key: 'total' },
+      { label: 'Địa chỉ', key: 'address' },
+      { label: 'Tài xế', key: 'driver' }
     ]);
-    setInventoryData(flattened);
+    setInventoryData(data);
     setShowInventory(true);
-  } catch (error) {
-    console.error('Lỗi khi mở kiểm kê trạng thái đơn hàng:', error);
+  } catch (err) {
+    console.error('Lỗi khi mở chi tiết đơn hàng:', err);
   }
 };
 
@@ -306,8 +322,60 @@ export default function Dashboard() {
           data={inventoryData}
           columns={inventoryColumns}
           onClose={() => setShowInventory(false)}
+          onViewDetail={handleViewOrderDetailFromInventory} // <- THÊM DÒNG NÀY
         />
         )}
+        {selectedOrder && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+    <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">Chi tiết đơn hàng #{selectedOrder.id}</h2>
+        <button
+          onClick={() => setSelectedOrder(null)}
+          className="text-gray-600 hover:text-red-600"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="mb-4 space-y-1">
+        <p><strong>Khách hàng:</strong> {selectedOrder.customer}</p>
+        <p><strong>Trạng thái:</strong> {selectedOrder.statusLabel}</p>
+        <p><strong>Địa chỉ:</strong> {selectedOrder.address}</p>
+        <p><strong>Tài xế:</strong> {selectedOrder.driver}</p>
+      </div>
+      <table className="w-full text-sm border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-2 py-1">Tên</th>
+            <th className="border px-2 py-1">Số lượng</th>
+            <th className="border px-2 py-1">Giá</th>
+            {/* <th className="border px-2 py-1">Tổng</th> */}
+          </tr>
+        </thead>
+        <tbody>
+          {orderDetails.map((item) => (
+            <tr key={item.id}>
+              <td className="border px-2 py-1">{item.name}</td>
+              <td className="border px-2 py-1">{item.quantity}</td>
+              <td className="border px-2 py-1">{item.price.toLocaleString('vi-VN')}đ</td>
+              {/* <td className="border px-2 py-1">
+                {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+              </td> */}
+            </tr>
+          ))}
+          {orderDetails.length === 0 && (
+            <tr>
+              <td colSpan={4} className="text-center py-3 text-gray-400">
+                Không có chi tiết đơn hàng
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
