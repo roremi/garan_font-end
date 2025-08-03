@@ -603,14 +603,14 @@ export default function OrderHistory() {
 
     // Nếu có ảnh, tạo preview
     if (complaint.imageUrl) {
-      setSelectedImages([{
-        file: new File([], 'existing-image'),
-        preview: complaint.imageUrl,
-        id: 'existing-' + Date.now(),
-        uploadedUrl: complaint.imageUrl
-      }]);
-    }
-  };
+    setSelectedImages([{
+      file: new File([], 'existing-image'),
+      preview: `http://localhost:5000/${complaint.imageUrl}`, // ✅ Thêm localhost:5000
+      id: 'existing-' + Date.now(),
+      uploadedUrl: complaint.imageUrl // Giữ nguyên filePath gốc
+    }]);
+  }
+};
 
   // ✅ Hàm xem chi tiết khiếu nại
   const handleViewComplaint = async (complaint: Complaint) => {
@@ -1044,19 +1044,22 @@ export default function OrderHistory() {
                 <p className="mt-1 text-gray-900 whitespace-pre-wrap">{viewComplaint.description}</p>
               </div>
 
-              {/* Hình ảnh */}
-              {viewComplaint.imageUrl && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Hình ảnh minh chứng:</Label>
-                  <div className="mt-2">
-                    <img 
-                      src={viewComplaint.imageUrl} 
-                      alt="Minh chứng khiếu nại"
-                      className="max-w-full h-auto rounded-lg border"
-                    />
+              {/* Hình ảnh -  */}
+                {viewComplaint.imageUrl && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Hình ảnh minh chứng:</Label>
+                    <div className="mt-2">
+                      <img 
+                        src={`http://localhost:5000/${viewComplaint.imageUrl}`} // ✅ Thêm localhost:5000
+                        alt="Minh chứng khiếu nại"
+                        className="max-w-full h-auto rounded-lg border"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Phản hồi từ admin */}
               {viewComplaint.adminResponse && (
