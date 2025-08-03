@@ -1517,4 +1517,73 @@ seedDefaultSegmentationRules: async () => {
   return response.json();
 },
 
+// Complaint APIs
+// Tạo khiếu nại mới
+createComplaint: async (complaintData: {
+  orderId: number;
+  title: string;
+  description: string;
+  imageUrl?: string;
+}) => {
+  const response = await fetch(`${API_URL}/Complaint`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(complaintData)
+  });
+  if (!response.ok) throw new Error('Không thể tạo khiếu nại');
+  return response.json();
+},
+
+// Lấy danh sách khiếu nại của người dùng hiện tại
+getMyComplaints: async () => {
+  const response = await fetch(`${API_URL}/Complaint/my-complaints`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy danh sách khiếu nại');
+  return response.json();
+},
+
+// Lấy thông tin khiếu nại theo ID
+getComplaintById: async (complaintId: number) => {
+  const response = await fetch(`${API_URL}/Complaint/${complaintId}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thông tin khiếu nại');
+  return response.json();
+},
+
+// Cập nhật khiếu nại
+updateComplaint: async (complaintId: number, complaintData: {
+  title: string;
+  description: string;
+  imageUrl?: string;
+}) => {
+  const response = await fetch(`${API_URL}/Complaint/${complaintId}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(complaintData)
+  });
+  if (!response.ok) throw new Error('Không thể cập nhật khiếu nại');
+  return response.json();
+},
+
+// Xóa khiếu nại
+deleteComplaint: async (complaintId: number) => {
+  const response = await fetch(`${API_URL}/Complaint/${complaintId}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể xóa khiếu nại');
+  return response.json();
+},
+
+// Lấy thống kê khiếu nại
+getComplaintStatistics: async () => {
+  const response = await fetch(`${API_URL}/Complaint/statistics`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Không thể lấy thống kê khiếu nại');
+  return response.json();
+},
+
 };
