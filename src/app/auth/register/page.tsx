@@ -111,7 +111,8 @@ export default function RegisterPage() {
     }
   
     try {
-      const response = await fetch('https://localhost:5001/api/User/verify-email/verify', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/User/verify-email/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -605,7 +605,7 @@ export default function OrderHistory() {
     if (complaint.imageUrl) {
     setSelectedImages([{
       file: new File([], 'existing-image'),
-      preview: `http://localhost:5000/${complaint.imageUrl}`, // ✅ Thêm localhost:5000
+      preview: `${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${complaint.imageUrl}`,
       id: 'existing-' + Date.now(),
       uploadedUrl: complaint.imageUrl // Giữ nguyên filePath gốc
     }]);
@@ -1050,12 +1050,12 @@ export default function OrderHistory() {
                     <Label className="text-sm font-medium text-gray-700">Hình ảnh minh chứng:</Label>
                     <div className="mt-2">
                       <img 
-                        src={`http://localhost:5000/${viewComplaint.imageUrl}`} // ✅ Thêm localhost:5000
-                        alt="Minh chứng khiếu nại"
-                        className="max-w-full h-auto rounded-lg border"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                        }}
+                      src={`${process.env.NEXT_PUBLIC_}/${viewComplaint.imageUrl} || 'http://localhost:5000'}/${viewComplaint.imageUrl}`}
+                      alt="Minh chứng khiếu nại"
+                      className="max-w-full h-auto rounded-lg border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                      }}
                       />
                     </div>
                   </div>

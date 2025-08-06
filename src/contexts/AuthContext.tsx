@@ -1,6 +1,7 @@
 "use client"
-const URL_API = "http://localhost:5001/";
 import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const URL_API = process.env.NEXT_PUBLIC_BACKEND_API || "http://localhost:5001/";
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import { authService } from '@/services/auth.service';
@@ -95,7 +96,7 @@ useEffect(() => {
   };
   const loginWithGoogle = async (idToken: string) => {
     try {
-      const response = await fetch(`https://localhost:5001/api/User/google-login`, {
+      const response = await fetch(`${URL_API}api/User/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken })
@@ -151,7 +152,7 @@ useEffect(() => {
   const getTwoFactorStatus = async (): Promise<TwoFactorStatusDto> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch('https://localhost:5001/api/TwoFactor/status', {
+      const response = await fetch(`${URL_API}api/TwoFactor/status`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -171,7 +172,7 @@ useEffect(() => {
   const setupTwoFactor = async (): Promise<SetupTwoFactorResponseDto> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch('https://localhost:5001/api/TwoFactor/setup', {
+      const response = await fetch(`${URL_API}api/TwoFactor/setup`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -191,7 +192,7 @@ useEffect(() => {
   const verifyTwoFactor = async (code: string): Promise<void> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch('https://localhost:5001/api/TwoFactor/verify', {
+      const response = await fetch(`${URL_API}api/TwoFactor/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -217,7 +218,7 @@ useEffect(() => {
   const disableTwoFactor = async (): Promise<void> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch('https://localhost:5001/api/TwoFactor/disable', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:5001'}/api/TwoFactor/disable`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

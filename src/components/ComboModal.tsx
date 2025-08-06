@@ -57,7 +57,7 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
 
   const getImageUrl = (filePath: string) => {
     if (!filePath) return '';
-    return `${process.env.NEXT_PUBLIC_API_URL||"http://localhost:5000"}/${filePath}`;
+    return `${process.env.NEXT_PUBLIC_BACKEND_API}/${filePath} || "http://localhost:5000"}/${filePath}`;
   };
 
   const loadInitialData = async () => {

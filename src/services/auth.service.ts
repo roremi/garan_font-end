@@ -4,7 +4,7 @@ import axios from 'axios';
 import { EmailVerificationRequest, VerifyOTPRequest, ApiResponse, VerifyEmailOTPRequest } from '@/types/auth';
 import { Driver } from '@/types/driver';
 
-const API_URL = 'https://localhost:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5001/api';
 
 class AuthService {
   async register(data: RegisterData): Promise<AuthResponse> {

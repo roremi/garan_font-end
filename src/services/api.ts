@@ -9,8 +9,7 @@ import { Feedback } from "@/types/feedback";
 import {Voucher} from '@/types/voucher';
 import {ShippingConfiguration} from '@/types/shipping'; 
 
-const API_URL = "https://localhost:5001/api";
-const API_URL1 = "https://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://localhost:5001/api";
 
 const getHeaders = (contentType: boolean = true): HeadersInit => {
   const headers: Record<string, string> = {};
