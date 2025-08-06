@@ -34,8 +34,8 @@ export function useSignalR(userId: number, userName: string) {
       (localStorage.getItem('app_token') || '').replace(/^"|"$/g, '');
 
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5000/chathub', {
-        accessTokenFactory: getToken
+      .withUrl(`${process.env.NEXT_PUBLIC_BACKEND_API || 'http://localhost:1000'}/chathub`, {
+      accessTokenFactory: getToken
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(signalR.LogLevel.Information)

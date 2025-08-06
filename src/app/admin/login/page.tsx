@@ -80,9 +80,10 @@ export default function AdminLogin() {
 
     // Gọi API lấy quyền
     const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-    const res = await fetch(`http://localhost:5000/api/admin/user-permissions/${userProfile.id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const res = await fetch(`${API_URL}/admin/user-permissions/${userProfile.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
     const data = await res.json();
 
     const userPermissions = data.permissions || [];

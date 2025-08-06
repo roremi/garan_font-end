@@ -1,4 +1,3 @@
-// components/chat/ChatBox.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSignalR } from '@/hooks/useSignalR';
@@ -27,14 +26,14 @@ export default function ChatBox() {
   const [initializing, setInitializing] = useState(false);
   const [showClosedRoomDialog, setShowClosedRoomDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
+  // Remove setInitialMessages from destructuring. Only use the values provided by useSignalR.
   const {
     connected,
     error,
     messages,
     joinRoom,
     sendMessage,
-    setInitialMessages
   } = useSignalR(user?.id || 0, user?.fullName || 'Khách');
 
   useEffect(() => {
@@ -43,16 +42,16 @@ export default function ChatBox() {
 
   const createNewRoom = async () => {
     if (!user) return;
-    
+
     setInitializing(true);
     try {
       const newRoom = await chatService.createRoom({
         name: user.fullName,
         departmentName: 'Hỗ trợ khách hàng'
       });
-      
+
       setRoomId(newRoom.id);
-      setInitialMessages([]);
+      // No need to call setInitialMessages
       await joinRoom(newRoom.id);
       setShowClosedRoomDialog(false);
     } catch (err) {
@@ -64,7 +63,7 @@ export default function ChatBox() {
 
   const initializeChat = async () => {
     if (!user) return;
-    
+
     setInitializing(true);
     try {
       const rooms = await chatService.getRooms();
@@ -72,19 +71,18 @@ export default function ChatBox() {
       const userRooms = rooms
         .filter(room => room.name === user.fullName)
         .sort((a, b) => b.id - a.id); // Sắp xếp theo ID giảm dần
-      
+
       const latestRoom = userRooms[0];
-      
+
       if (latestRoom) {
         // Kiểm tra trạng thái phòng
         if (latestRoom.status === ChatRoomStatus.Closed) {
           setShowClosedRoomDialog(true);
           return;
         }
-        
+
         setRoomId(latestRoom.id);
-        const chatMessages = await chatService.getMessages(latestRoom.id);
-        setInitialMessages(chatMessages);
+        // No need to call setInitialMessages, messages will be handled by useSignalR
         await joinRoom(latestRoom.id);
       } else {
         // Nếu chưa có phòng nào, tạo phòng mới
@@ -106,7 +104,7 @@ export default function ChatBox() {
       try {
         const currentRoom = await chatService.getRooms()
           .then(rooms => rooms.find(r => r.id === roomId));
-        
+
         if (currentRoom?.status === ChatRoomStatus.Closed) {
           setShowClosedRoomDialog(true);
         }
@@ -122,17 +120,17 @@ export default function ChatBox() {
 
   const handleSendMessage = async () => {
     if (!message.trim() || !roomId) return;
-    
+
     setLoading(true);
     try {
       const room = await chatService.getRooms()
         .then(rooms => rooms.find(r => r.id === roomId));
-      
+
       if (room?.status === ChatRoomStatus.Closed) {
         setShowClosedRoomDialog(true);
         return;
       }
-      
+
       await sendMessage(roomId, message.trim());
       setMessage('');
     } catch (err) {
@@ -191,7 +189,7 @@ export default function ChatBox() {
             <div>
               <h3 className="font-medium text-lg">Hỗ trợ khách hàng</h3>
               <p className="text-sm text-blue-100">
-                {connected ? 'Đang kết nối' : 'Đang kết nối...'}
+                {connected ? 'Đã kết nối' : 'Đang kết nối...'}
               </p>
             </div>
             <button
