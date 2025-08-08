@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://api.garancuctac.com",
+    "NODE_ENV": "production"
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://api.garancuctac.com/api/$1"
+    }
+  ]
+}
