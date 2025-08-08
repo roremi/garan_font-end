@@ -152,7 +152,7 @@ useEffect(() => {
   const getTwoFactorStatus = async (): Promise<TwoFactorStatusDto> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch(`${URL_API}api/TwoFactor/status`, {
+      const response = await fetch(`${URL_API}/api/TwoFactor/status`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -172,7 +172,7 @@ useEffect(() => {
   const setupTwoFactor = async (): Promise<SetupTwoFactorResponseDto> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch(`${URL_API}api/TwoFactor/setup`, {
+      const response = await fetch(`${URL_API}/api/TwoFactor/setup`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

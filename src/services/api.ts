@@ -1171,11 +1171,8 @@ getAllUserProfiles: async (): Promise<{ id: number, username: string, fullName: 
 },
 
 getUserProfile: async () => {
-  const response = await fetch(`https://localhost:5001/api/User/profile`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1')}`
-    }
+  const response = await fetch(`${API_URL}/User/profile`, {
+    headers: getHeaders()
   });
 
   if (!response.ok) {
