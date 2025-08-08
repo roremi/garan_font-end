@@ -96,7 +96,7 @@ useEffect(() => {
   };
   const loginWithGoogle = async (idToken: string) => {
     try {
-      const response = await fetch(`${URL_API}api/User/google-login`, {
+      const response = await fetch(`${URL_API}/api/User/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken })
@@ -192,7 +192,7 @@ useEffect(() => {
   const verifyTwoFactor = async (code: string): Promise<void> => {
     try {
       const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-      const response = await fetch(`${URL_API}api/TwoFactor/verify`, {
+      const response = await fetch(`${URL_API}/api/TwoFactor/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
