@@ -77,11 +77,11 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
   
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NODE_ENV === 'production' 
-      ? 'https://api.garancuctac.com'
-      : 'http://localhost:5000',
-  },
+  // env: {
+  //   NEXT_PUBLIC_API_URL: process.env.NODE_ENV === 'production' 
+  //     ? 'https://api.garancuctac.com'
+  //     : 'http://localhost:5000',
+  // },
 };
 
 export default nextConfig;
