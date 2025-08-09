@@ -48,8 +48,9 @@ export default function AdminChatBox() {
     messages,
     joinRoom,
     sendMessage,
-    // setInitialMessages,
-    onNewRoom // Thêm onNewRoom
+    setInitialMessages, // ✅ Đảm bảo có function này
+    clearMessages,      // ✅ Thêm clearMessages
+    onNewRoom
   } = useSignalR(user?.id || 0, user?.fullName || 'Admin');
 
   // Xử lý khi nhận được phòng mới
@@ -86,6 +87,11 @@ export default function AdminChatBox() {
   };
 
   const handleRoomSelect = async (roomId: number) => {
+    // ✅ Kiểm tra nếu đã chọn room này rồi thì không cần load lại
+    if (selectedRoomId === roomId) {
+      return;
+    }
+    
     setSelectedRoomId(roomId);
     await fetchMessages(roomId);
   };
@@ -99,6 +105,7 @@ export default function AdminChatBox() {
       await fetchRooms();
       if (newStatus === ChatRoomStatus.Closed) {
         setSelectedRoomId(null);
+        clearMessages(); // ✅ Clear messages khi đóng room
       }
     } catch (err) {
       console.error('Error updating room status:', err);
@@ -107,11 +114,21 @@ export default function AdminChatBox() {
     }
   };
 
+  // ✅ Fix function fetchMessages để load tin nhắn cũ
   const fetchMessages = async (roomId: number) => {
     setLoading(true);
     try {
-      const messages = await chatService.getMessages(roomId);
-      // setInitialMessages(messages);
+      // Clear messages cũ trước
+      clearMessages();
+      
+      // Load tin nhắn cũ từ database
+      const oldMessages = await chatService.getMessages(roomId);
+      console.log(`Loading ${oldMessages.length} messages for room ${roomId}`);
+      
+      // Set tin nhắn cũ vào state
+      setInitialMessages(oldMessages);
+      
+      // Join room để nhận tin nhắn mới
       await joinRoom(roomId);
     } catch (err) {
       console.error('Error fetching messages:', err);
@@ -145,6 +162,13 @@ export default function AdminChatBox() {
     }
   };
 
+  // ✅ Hàm tạo unique key cho message
+  const getMessageKey = (msg: any, index: number) => {
+    if (msg.key) return msg.key;
+    if (msg.id) return `admin-msg-${msg.id}`;
+    return `admin-msg-${index}-${msg.senderId}-${new Date(msg.createdAt).getTime()}`;
+  };
+
   const filteredRooms = rooms.filter(room => 
     room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     room.departmentName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -166,7 +190,11 @@ export default function AdminChatBox() {
           <div className="bg-blue-600 text-white px-4 py-3 rounded-t-lg flex justify-between items-center">
             <h3 className="font-medium">Quản lý tin nhắn</h3>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                setIsOpen(false);
+                setSelectedRoomId(null);
+                clearMessages(); // ✅ Clear messages khi đóng admin chat
+              }}
               className="text-white hover:text-gray-200 transition-colors"
             >
               <X size={20} />
@@ -220,7 +248,7 @@ export default function AdminChatBox() {
                 ) : (
                   filteredRooms.map(room => (
                     <ChatRoom
-                      key={room.id}
+                      key={`admin-room-${room.id}`} // ✅ Unique key for rooms
                       room={room}
                       isActive={selectedRoomId === room.id}
                       onClick={() => handleRoomSelect(room.id)}
@@ -276,11 +304,23 @@ export default function AdminChatBox() {
                         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                         <span className="ml-2">Đang tải tin nhắn...</span>
                       </div>
+                    ) : error ? (
+                      <div className="text-center text-red-500 py-6">
+                        <p>Lỗi: {error}</p>
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="text-center text-gray-500 py-6">
+                        <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                        <p>Chưa có tin nhắn nào trong phòng này</p>
+                      </div>
                     ) : (
                       <>
                         <div ref={messagesEndRef} />
-                        {messages.map((msg) => (
-                          <ChatBubble key={msg.id} message={msg} />
+                        {messages.map((msg, index) => (
+                          <ChatBubble 
+                            key={getMessageKey(msg, index)}
+                            message={msg} 
+                          />
                         ))}
                       </>
                     )}
@@ -299,7 +339,7 @@ export default function AdminChatBox() {
                       <Button
                         onClick={handleSendMessage}
                         disabled={!message.trim() || loading || !connected}
-                        className="h-10 w-10 p-0"
+                        className="h-10 w-10 p-0 bg-blue-600 hover:bg-blue-700"
                       >
                         {loading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -308,11 +348,19 @@ export default function AdminChatBox() {
                         )}
                       </Button>
                     </div>
+                    {!connected && (
+                      <div className="text-sm text-red-500 mt-2">
+                        Chưa kết nối đến server chat
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500">
-                  Chọn một phòng chat để bắt đầu
+                  <div className="text-center">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                    <p>Chọn một phòng chat để bắt đầu</p>
+                  </div>
                 </div>
               )}
             </div>

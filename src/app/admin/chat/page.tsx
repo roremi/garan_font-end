@@ -176,6 +176,7 @@ export default function ChatManagement() {
     try {
       const messages = await chatService.getMessages(roomId);
       setInitialMessages(messages);
+      setInitialMessages(messages);
       await joinRoom(roomId);
     } catch (err) {
       console.error('Error fetching messages:', err);
@@ -227,7 +228,7 @@ export default function ChatManagement() {
             disabled={loadingRooms}
             variant="outline"
             className="gap-2"
-          >
+          > 
             <RefreshCcw className="h-4 w-4" />
             Làm mới
           </Button>
@@ -307,12 +308,12 @@ export default function ChatManagement() {
                       </div>
                     ) : (
                       filteredRooms.map(room => (
-                        <ChatRoom
-                          key={room.id}
-                          room={room}
-                          isActive={selectedRoomId === room.id}
-                          onClick={() => handleRoomSelect(room.id)}
-                        />
+                <ChatRoom
+                  key={`room-${room.id}`} // ✅ Unique key for rooms
+                  room={room}
+                  isActive={selectedRoomId === room.id}
+                  onClick={() => handleRoomSelect(room.id)}
+                />
                       ))
                     )}
                   </div>

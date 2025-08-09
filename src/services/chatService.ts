@@ -23,6 +23,7 @@ export interface ChatMessage {
   senderName: string;
   chatRoomId: number;
   createdAt: string;
+  key?: string;
 }
 
 // Hàm xử lý token để loại bỏ dấu ngoặc kép

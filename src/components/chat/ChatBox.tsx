@@ -27,13 +27,14 @@ export default function ChatBox() {
   const [showClosedRoomDialog, setShowClosedRoomDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Remove setInitialMessages from destructuring. Only use the values provided by useSignalR.
   const {
     connected,
     error,
     messages,
     joinRoom,
+    setInitialMessages, 
     sendMessage,
+    clearMessages
   } = useSignalR(user?.id || 0, user?.fullName || 'Khách');
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function ChatBox() {
       });
 
       setRoomId(newRoom.id);
-      // No need to call setInitialMessages
+      clearMessages();
       await joinRoom(newRoom.id);
       setShowClosedRoomDialog(false);
     } catch (err) {
@@ -67,25 +68,23 @@ export default function ChatBox() {
     setInitializing(true);
     try {
       const rooms = await chatService.getRooms();
-      // Tìm phòng chat mới nhất của người dùng
       const userRooms = rooms
         .filter(room => room.name === user.fullName)
-        .sort((a, b) => b.id - a.id); // Sắp xếp theo ID giảm dần
+        .sort((a, b) => b.id - a.id);
 
       const latestRoom = userRooms[0];
 
       if (latestRoom) {
-        // Kiểm tra trạng thái phòng
         if (latestRoom.status === ChatRoomStatus.Closed) {
           setShowClosedRoomDialog(true);
           return;
         }
 
         setRoomId(latestRoom.id);
-        // No need to call setInitialMessages, messages will be handled by useSignalR
+        const oldMessages = await chatService.getMessages(latestRoom.id);
+        setInitialMessages(oldMessages);
         await joinRoom(latestRoom.id);
       } else {
-        // Nếu chưa có phòng nào, tạo phòng mới
         await createNewRoom();
       }
     } catch (err) {
@@ -100,7 +99,6 @@ export default function ChatBox() {
     if (!roomId) {
       await initializeChat();
     } else {
-      // Kiểm tra trạng thái phòng hiện tại khi mở lại chat
       try {
         const currentRoom = await chatService.getRooms()
           .then(rooms => rooms.find(r => r.id === roomId));
@@ -145,6 +143,13 @@ export default function ChatBox() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  // ✅ Hàm tạo unique key cho message
+  const getMessageKey = (msg: any, index: number) => {
+    if (msg.key) return msg.key;
+    if (msg.id) return `msg-${msg.id}`;
+    return `msg-${index}-${msg.senderId}-${new Date(msg.createdAt).getTime()}`;
   };
 
   return (
@@ -229,8 +234,11 @@ export default function ChatBox() {
             ) : (
               <>
                 <div ref={messagesEndRef} />
-                {messages.map((msg) => (
-                  <ChatBubble key={msg.id} message={msg} />
+                {messages.map((msg, index) => (
+                  <ChatBubble 
+                    key={getMessageKey(msg, index)}
+                    message={msg} 
+                  />
                 ))}
               </>
             )}
