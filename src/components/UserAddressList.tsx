@@ -28,12 +28,16 @@ declare global {
 }
 
 interface District {
-  code: number;
+  code: string;
   name: string;
 }
 
 interface Ward {
-  code: number;
+  code: string;
+  name: string;
+}
+interface Province {
+  code: string; // Thêm interface cho Province
   name: string;
 }
 
@@ -95,9 +99,9 @@ export default function UserAddressList({
   const [provinces, setProvinces] = useState<any[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<number | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<number | null>(null);
-  const [selectedWard, setSelectedWard] = useState<number | null>(null);
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [selectedWard, setSelectedWard] = useState<string | null>(null);
   const [addressDetail, setAddressDetail] = useState<string>("");
   const [isDefault, setIsDefault] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -134,10 +138,10 @@ export default function UserAddressList({
     }
   }, []);
 
-  const loadDistricts = useCallback(async (provinceId: number) => {
+  const loadDistricts = useCallback(async (provincecode: string) => {
     setIsLoadingDistricts(true);
     try {
-      const data = (await parseApiJson(api.getDistricts(provinceId))) as District[];
+      const data = (await parseApiJson(api.getDistricts(provincecode))) as District[];
       setDistricts(data);
       setWards([]);
       setSelectedDistrict(null);
@@ -151,10 +155,10 @@ export default function UserAddressList({
     }
   }, []);
 
-  const loadWards = useCallback(async (districtId: number) => {
+  const loadWards = useCallback(async (districtcode: string) => {
     setIsLoadingWards(true);
     try {
-      const data = (await parseApiJson(api.getWards(districtId))) as Ward[];
+      const data = (await parseApiJson(api.getWards(districtcode))) as Ward[];
       setWards(data);
       setSelectedWard(null);
       return data;
@@ -281,7 +285,7 @@ export default function UserAddressList({
 
   // Phần 11: Xử lý sự kiện thay đổi form
   const handleProvinceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = parseInt(e.target.value);
+    const id = e.target.value;
     setSelectedProvince(id);
     setLatitude(null);
     setLongitude(null);
@@ -290,7 +294,7 @@ export default function UserAddressList({
   };
 
   const handleDistrictChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = parseInt(e.target.value);
+    const id = e.target.value;
     setSelectedDistrict(id);
     setLatitude(null);
     setLongitude(null);
@@ -299,7 +303,7 @@ export default function UserAddressList({
   };
 
   const handleWardChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = parseInt(e.target.value);
+    const id = e.target.value;
     setSelectedWard(id);
     setLatitude(null);
     setLongitude(null);
@@ -323,8 +327,8 @@ export default function UserAddressList({
   // Phần 12: Xử lý các hành động thêm, cập nhật, xóa địa chỉ
   const handleOpenAddDialog = () => {
     resetForm();
-    setSelectedProvince(79);
-    loadDistricts(79);
+    setSelectedProvince("79");
+    loadDistricts("79");
     setOpenDialog(true);
   };
 
