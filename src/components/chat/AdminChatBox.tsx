@@ -48,7 +48,7 @@ export default function AdminChatBox() {
     messages,
     joinRoom,
     sendMessage,
-    setInitialMessages,
+    // setInitialMessages,
     onNewRoom // Thêm onNewRoom
   } = useSignalR(user?.id || 0, user?.fullName || 'Admin');
 
@@ -111,7 +111,7 @@ export default function AdminChatBox() {
     setLoading(true);
     try {
       const messages = await chatService.getMessages(roomId);
-      setInitialMessages(messages);
+      // setInitialMessages(messages);
       await joinRoom(roomId);
     } catch (err) {
       console.error('Error fetching messages:', err);
