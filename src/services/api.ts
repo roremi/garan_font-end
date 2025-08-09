@@ -567,8 +567,8 @@ async cancelOrder(orderId: number): Promise<{message: string, status: number}> {
     return response.json();
   },
 
-  getDistricts: async (provinceId: number) => {
-  const response = await fetch(`${API_URL}/Location/districts/${provinceId}`, {
+  getDistricts: async (provincecode: string) => {
+  const response = await fetch(`${API_URL}/Location/districts/${provincecode}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -583,8 +583,8 @@ async cancelOrder(orderId: number): Promise<{message: string, status: number}> {
   return response.json(); // Trả về danh sách districts từ open-api.vn
 },
 
-getWards: async (districtId: number) => {
-  const response = await fetch(`${API_URL}/Location/wards/${districtId}`, {
+getWards: async (districtcode: string) => {
+  const response = await fetch(`${API_URL}/Location/wards/${districtcode}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
