@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingBag, Users, Settings, LogOut, Menu, X, FolderOpen,
-  Bell, Search, User, MessageCircle, TicketPercent, Layers, Boxes, Edit2Icon, AlertTriangle
+  Bell, Search, User, MessageCircle, TicketPercent, Layers, Boxes, Edit2Icon
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,6 @@ const menuItems = [
   { title: 'Quản lý người dùng', icon: Users, path: '/admin/users', requiredPermission: 'permission_view_allprofile' },
   { title: 'Quản lý quyền', icon: Edit2Icon, path: '/admin/permissions', requiredPermission: 'permission_view_admin_page' },
   { title: 'Quản lý Driver', icon: Users, path: '/admin/driver', requiredPermission: 'permission_view_driver' },
-  { title: 'Feedback & Khiếu nại', icon: AlertTriangle, path: '/admin/feedback', requiredPermission: 'permission_view_admin_page' },
   { title: 'Quản lý tin nhắn', icon: MessageCircle, path: '/admin/chat', requiredPermission: 'permission_manager_chat' },
   { title: 'Marketing', icon: Boxes, path: '/admin/maketting', requiredPermission: 'permission_view_admin_page' }
 ];
