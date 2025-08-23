@@ -1050,7 +1050,7 @@ export default function OrderHistory() {
                     <Label className="text-sm font-medium text-gray-700">Hình ảnh minh chứng:</Label>
                     <div className="mt-2">
                       <img 
-                      src={`${process.env.NEXT_PUBLIC_}/${viewComplaint.imageUrl} || 'http://localhost:5000'}/${viewComplaint.imageUrl}`}
+                      src={`${process.env.NEXT_PUBLIC_BACKEND_API}/${viewComplaint.imageUrl} || 'http://localhost:5000'}/${viewComplaint.imageUrl}`}
                       alt="Minh chứng khiếu nại"
                       className="max-w-full h-auto rounded-lg border"
                       onError={(e) => {
