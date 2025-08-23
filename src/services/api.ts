@@ -1513,73 +1513,103 @@ seedDefaultSegmentationRules: async () => {
   return response.json();
 },
 
-// Complaint APIs
-// Tạo khiếu nại mới
-createComplaint: async (complaintData: {
-  orderId: number;
-  title: string;
-  description: string;
-  imageUrl?: string;
-}) => {
-  const response = await fetch(`${API_URL}/Complaint`, {
-    method: 'POST',
+// Thêm vào cuối object api trong file api.ts
+
+// Lấy tất cả feedback cho admin (sử dụng API hiện có)
+// Lấy tất cả feedback cho admin (sử dụng API hiện có)
+async getAllFeedbacksForAdmin(): Promise<any[]> {
+  try {
+    // Lấy danh sách tất cả sản phẩm
+    const products = await this.getProducts();
+    
+    // Lấy feedback cho từng sản phẩm
+    const feedbackPromises = products.map(async (product) => {
+      try {
+        const feedbacks = await this.getProductFeedbacks(product.id);
+        return feedbacks.map((feedback: any) => ({
+          ...feedback,
+          product: {
+            id: product.id,
+            name: product.name,
+            image: product.imageId ? `${API_URL}/uploads/${product.imageId}` : '/placeholder-product.png' // Tạo URL đầy đủ từ imageId
+          }
+        }));
+      } catch (error) {
+        console.error(`Error fetching feedback for product ${product.id}:`, error);
+        return [];
+      }
+    });
+
+    const allFeedbacks = await Promise.all(feedbackPromises);
+    return allFeedbacks.flat().sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  } catch (error) {
+    console.error('Error fetching all feedbacks:', error);
+    throw error;
+  }
+},
+
+// Complaint APIs cho admin
+async getAllComplaints(params: {
+  status?: number;
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  data: any[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
+}> {
+  const queryParams = new URLSearchParams();
+  if (params.status !== undefined) queryParams.append('status', params.status.toString());
+  if (params.page) queryParams.append('page', params.page.toString());
+  if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+
+  const response = await fetch(`${API_URL}/admin/complaint?${queryParams}`, {
     headers: getHeaders(),
-    body: JSON.stringify(complaintData)
   });
-  if (!response.ok) throw new Error('Không thể tạo khiếu nại');
-  return response.json();
+  
+  if (!response.ok) throw new Error('Failed to fetch complaints');
+  const result = await response.json();
+  return {
+    data: result.data,
+    pagination: result.pagination
+  };
 },
 
-// Lấy danh sách khiếu nại của người dùng hiện tại
-getMyComplaints: async () => {
-  const response = await fetch(`${API_URL}/Complaint/my-complaints`, {
-    headers: getHeaders()
+async getComplaintStatistics(): Promise<{
+  totalComplaints: number;
+  pendingComplaints: number;
+  processingComplaints: number;
+  statusBreakdown: Array<{ status: number; count: number; statusText: string }>;
+  monthlyTrend: Array<{ month: string; count: number }>;
+}> {
+  const response = await fetch(`${API_URL}/admin/complaint/statistics`, {
+    headers: getHeaders(),
   });
-  if (!response.ok) throw new Error('Không thể lấy danh sách khiếu nại');
-  return response.json();
+  
+  if (!response.ok) throw new Error('Failed to fetch complaint statistics');
+  const result = await response.json();
+  return result.data;
 },
 
-// Lấy thông tin khiếu nại theo ID
-getComplaintById: async (complaintId: number) => {
-  const response = await fetch(`${API_URL}/Complaint/${complaintId}`, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error('Không thể lấy thông tin khiếu nại');
-  return response.json();
-},
-
-// Cập nhật khiếu nại
-updateComplaint: async (complaintId: number, complaintData: {
-  title: string;
-  description: string;
-  imageUrl?: string;
-}) => {
-  const response = await fetch(`${API_URL}/Complaint/${complaintId}`, {
+async processComplaint(complaintId: number, data: {
+  status: number;
+  adminResponse: string;
+}): Promise<any> {
+  const response = await fetch(`${API_URL}/admin/complaint/${complaintId}/process`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify(complaintData)
+    body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error('Không thể cập nhật khiếu nại');
-  return response.json();
-},
-
-// Xóa khiếu nại
-deleteComplaint: async (complaintId: number) => {
-  const response = await fetch(`${API_URL}/Complaint/${complaintId}`, {
-    method: 'DELETE',
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error('Không thể xóa khiếu nại');
-  return response.json();
-},
-
-// Lấy thống kê khiếu nại
-getComplaintStatistics: async () => {
-  const response = await fetch(`${API_URL}/Complaint/statistics`, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error('Không thể lấy thống kê khiếu nại');
-  return response.json();
+  
+  if (!response.ok) throw new Error('Failed to process complaint');
+  const result = await response.json();
+  return result.data;
 },
 
 };
