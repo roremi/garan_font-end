@@ -147,20 +147,80 @@ export default function FeedbackComplaintManagement() {
   // Statistics
   const [statistics, setStatistics] = useState<Statistics | null>(null);
 
-  // Helper function to get full image URL
+  // Helper function to get full image URL - CẬP NHẬT ĐỂ XỬ LÝ ĐÚNG IMAGEURL TỪ BACKEND
   const getFullImageUrl = (imagePath: string) => {
-    if (!imagePath) return '/placeholder-product.png';
-    if (imagePath.startsWith('http')) return imagePath;
+    if (!imagePath) {
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlmYTZiNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlByb2R1Y3Q8L3RleHQ+Cjwvc3ZnPgo=';
+    }
     
-    // Handle placeholder cases
-    if (imagePath === 'placeholder-product.png' || imagePath === '/placeholder-product.png') {
-      return '/placeholder-product.png';
+    // Nếu là URL đầy đủ, return trực tiếp
+    if (imagePath.startsWith('http')) {
+      return imagePath;
     }
     
     const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000';
-    // Remove leading slash if present to avoid double slashes
-    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
-    return `${baseUrl}/${cleanPath}`;
+    
+    // Nếu imagePath bắt đầu bằng "/images/" (như trong data mẫu)
+    // Thì kết hợp với baseUrl: baseUrl + imagePath
+    if (imagePath.startsWith('/')) {
+      return `${baseUrl}${imagePath}`;
+    }
+    
+    // Nếu không có "/" ở đầu, thêm vào
+    return `${baseUrl}/${imagePath}`;
+  };
+
+  // Helper function để debug image URLs
+  const debugImageUrl = (imagePath: string, context: string = '') => {
+    const fullUrl = getFullImageUrl(imagePath);
+    console.log(`[DEBUG ${context}] ImagePath: "${imagePath}" -> FullURL: "${fullUrl}"`);
+    return fullUrl;
+  };
+
+  // Helper function với null check
+  const getInitials = (name: string) => {
+    if (!name || typeof name !== 'string') {
+      return 'NA';
+    }
+    return name
+      .split(' ')
+      .map(word => word[0] || '')
+      .join('')
+      .toUpperCase()
+      .substring(0, 2) || 'NA';
+  };
+
+  // Helper function với null check
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Helper function với null check
+  const renderStars = (rating: number) => {
+    const validRating = Math.max(0, Math.min(5, rating || 0));
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= validRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -188,23 +248,26 @@ export default function FeedbackComplaintManagement() {
         api.getAllFeedbacksForAdmin()
       ]);
 
+      console.log('Products data:', productsData?.slice(0, 2)); // Log 2 sản phẩm đầu để debug
+      console.log('Feedbacks data:', feedbacksData?.slice(0, 2)); // Log 2 feedback đầu để debug
+
       // Load complaints và complaint statistics
       const [complaintsData, complaintStats] = await Promise.all([
         api.getAllComplaints({ page: 1, pageSize }),
         api.getComplaintStatisticsAdmin()
       ]);
 
-      setProducts(productsData);
-      setFeedbacks(feedbacksData);
-      setComplaints(complaintsData.data);
-      setTotalComplaintPages(complaintsData.pagination.totalPages);
-      setTotalComplaintCount(complaintsData.pagination.totalCount);
+      setProducts(productsData || []);
+      setFeedbacks(feedbacksData || []);
+      setComplaints(complaintsData?.data || []);
+      setTotalComplaintPages(complaintsData?.pagination?.totalPages || 1);
+      setTotalComplaintCount(complaintsData?.pagination?.totalCount || 0);
 
       // Calculate combined statistics
-      const calculatedFeedbackStats = calculateFeedbackStatistics(feedbacksData);
+      const calculatedFeedbackStats = calculateFeedbackStatistics(feedbacksData || []);
       const combinedStats = {
         ...calculatedFeedbackStats,
-        ...complaintStats
+        ...(complaintStats || {})
       };
       setStatistics(combinedStats);
     } catch (error) {
@@ -226,9 +289,9 @@ export default function FeedbackComplaintManagement() {
       }
 
       const result = await api.getAllComplaints(params);
-      setComplaints(result.data);
-      setTotalComplaintPages(result.pagination.totalPages);
-      setTotalComplaintCount(result.pagination.totalCount);
+      setComplaints(result?.data || []);
+      setTotalComplaintPages(result?.pagination?.totalPages || 1);
+      setTotalComplaintCount(result?.pagination?.totalCount || 0);
     } catch (error) {
       console.error('Error loading complaints:', error);
       toast.error('Không thể tải danh sách khiếu nại');
@@ -238,9 +301,18 @@ export default function FeedbackComplaintManagement() {
   };
 
   const calculateFeedbackStatistics = (feedbackData: FeedbackItem[]) => {
+    if (!Array.isArray(feedbackData) || feedbackData.length === 0) {
+      return {
+        totalFeedbacks: 0,
+        averageRating: 0,
+        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        topRatedProducts: []
+      };
+    }
+
     const totalFeedbacks = feedbackData.length;
     const averageRating = totalFeedbacks > 0 
-      ? feedbackData.reduce((sum, f) => sum + f.rating, 0) / totalFeedbacks 
+      ? feedbackData.reduce((sum, f) => sum + (f.rating || 0), 0) / totalFeedbacks 
       : 0;
 
     const ratingDistribution: { [key: number]: number } = {};
@@ -251,16 +323,18 @@ export default function FeedbackComplaintManagement() {
     const productStats: { [key: number]: { total: number; sum: number; name: string } } = {};
     
     feedbackData.forEach(feedback => {
-      const productId = feedback.product.id;
-      if (!productStats[productId]) {
-        productStats[productId] = {
-          total: 0,
-          sum: 0,
-          name: feedback.product.name
-        };
+      if (feedback.product && feedback.product.id) {
+        const productId = feedback.product.id;
+        if (!productStats[productId]) {
+          productStats[productId] = {
+            total: 0,
+            sum: 0,
+            name: feedback.product.name || 'Unknown Product'
+          };
+        }
+        productStats[productId].total++;
+        productStats[productId].sum += feedback.rating || 0;
       }
-      productStats[productId].total++;
-      productStats[productId].sum += feedback.rating;
     });
 
     const topRatedProducts = Object.entries(productStats)
@@ -283,14 +357,19 @@ export default function FeedbackComplaintManagement() {
   };
 
   const filterFeedbacks = () => {
+    if (!Array.isArray(feedbacks)) {
+      setFilteredFeedbacks([]);
+      return;
+    }
+
     let filtered = [...feedbacks];
 
     if (searchTerm) {
       filtered = filtered.filter(feedback =>
-        feedback.user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        feedback.product.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (feedback.user?.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (feedback.user?.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (feedback.comment || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (feedback.product?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -299,7 +378,7 @@ export default function FeedbackComplaintManagement() {
     }
 
     if (productFilter !== 'all') {
-      filtered = filtered.filter(feedback => feedback.product.id === parseInt(productFilter));
+      filtered = filtered.filter(feedback => feedback.product?.id === parseInt(productFilter));
     }
 
     setFilteredFeedbacks(filtered);
@@ -352,6 +431,7 @@ export default function FeedbackComplaintManagement() {
 
   const handleImageClick = (imageUrl: string) => {
     const fullUrl = getFullImageUrl(imageUrl);
+    console.log('Image clicked:', imageUrl, '-> Full URL:', fullUrl);
     setViewerImageUrl(fullUrl);
     setShowImageViewer(true);
   };
@@ -381,49 +461,14 @@ export default function FeedbackComplaintManagement() {
     }
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`w-4 h-4 ${
-              star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-            }`}
-          />
-        ))}
-      </div>
-    );
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   // Pagination for current tab
-  const currentData = activeTab === 'feedback' ? filteredFeedbacks : complaints;
   const totalPages = activeTab === 'feedback' 
-    ? Math.ceil(filteredFeedbacks.length / pageSize)
+    ? Math.ceil((filteredFeedbacks?.length || 0) / pageSize)
     : totalComplaintPages;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedData = activeTab === 'feedback'
-    ? filteredFeedbacks.slice(startIndex, startIndex + pageSize)
-    : complaints;
+    ? (filteredFeedbacks || []).slice(startIndex, startIndex + pageSize)
+    : complaints || [];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -451,7 +496,7 @@ export default function FeedbackComplaintManagement() {
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statistics.totalFeedbacks}</div>
+                <div className="text-2xl font-bold">{statistics.totalFeedbacks || 0}</div>
                 <p className="text-xs text-muted-foreground">Đánh giá sản phẩm</p>
               </CardContent>
             </Card>
@@ -462,9 +507,9 @@ export default function FeedbackComplaintManagement() {
                 <Star className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statistics.averageRating.toFixed(1)}/5</div>
+                <div className="text-2xl font-bold">{(statistics.averageRating || 0).toFixed(1)}/5</div>
                 <div className="flex items-center mt-1">
-                  {renderStars(Math.round(statistics.averageRating))}
+                  {renderStars(Math.round(statistics.averageRating || 0))}
                 </div>
               </CardContent>
             </Card>
@@ -475,7 +520,7 @@ export default function FeedbackComplaintManagement() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statistics.totalComplaints}</div>
+                <div className="text-2xl font-bold">{statistics.totalComplaints || 0}</div>
                 <p className="text-xs text-muted-foreground">Khiếu nại đơn hàng</p>
               </CardContent>
             </Card>
@@ -487,7 +532,7 @@ export default function FeedbackComplaintManagement() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
-                  {statistics.pendingComplaints}
+                  {statistics.pendingComplaints || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">Cần xử lý ngay</p>
               </CardContent>
@@ -500,7 +545,7 @@ export default function FeedbackComplaintManagement() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {statistics.processingComplaints}
+                  {statistics.processingComplaints || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">Đang giải quyết</p>
               </CardContent>
@@ -543,9 +588,9 @@ export default function FeedbackComplaintManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả sản phẩm</SelectItem>
-                        {products.map((product) => (
+                        {(products || []).map((product) => (
                           <SelectItem key={product.id} value={product.id.toString()}>
-                            {product.name}
+                            {product.name || 'Unknown Product'}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -579,7 +624,7 @@ export default function FeedbackComplaintManagement() {
                         <SelectItem value="3">Từ chối</SelectItem>
                       </SelectContent>
                     </Select>
-                    <div></div> {/* Empty div for spacing */}
+                    <div></div>
                   </>
                 )}
 
@@ -598,15 +643,15 @@ export default function FeedbackComplaintManagement() {
             </CardContent>
           </Card>
 
-          {/* Feedback Tab */}
+          {/* Feedback Tab - CẬP NHẬT ĐỂ XỬ LÝ IMAGEURL */}
           <TabsContent value="feedback">
             <Card>
               <CardHeader>
                 <CardTitle>
-                  Danh sách Feedback ({filteredFeedbacks.length})
-                  {filteredFeedbacks.length !== feedbacks.length && (
+                  Danh sách Feedback ({(filteredFeedbacks || []).length})
+                  {(filteredFeedbacks || []).length !== (feedbacks || []).length && (
                     <span className="text-sm text-gray-500 font-normal">
-                      / {feedbacks.length} tổng
+                      / {(feedbacks || []).length} tổng
                     </span>
                   )}
                 </CardTitle>
@@ -617,7 +662,7 @@ export default function FeedbackComplaintManagement() {
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     <p className="mt-2">Đang tải...</p>
                   </div>
-                ) : filteredFeedbacks.length === 0 ? (
+                ) : (filteredFeedbacks || []).length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-gray-500">Không tìm thấy feedback nào</p>
                   </div>
@@ -635,78 +680,86 @@ export default function FeedbackComplaintManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedData.map((feedback: any) => (
-                          <TableRow key={feedback.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="text-xs">
-                                    {getInitials(feedback.user.fullName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">{feedback.user.fullName}</p>
-                                  <p className="text-xs text-gray-500">@{feedback.user.username}</p>
+                        {paginatedData.map((feedback: any) => {
+                          // Safety check
+                          if (!feedback || !feedback.user || !feedback.product) {
+                            return null;
+                          }
+
+                          return (
+                            <TableRow key={feedback.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="text-xs">
+                                      {getInitials(feedback.user?.fullName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">{feedback.user?.fullName || 'Unknown User'}</p>
+                                    <p className="text-xs text-gray-500">@{feedback.user?.username || 'unknown'}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <img 
-                                  src={getFullImageUrl(feedback.product.image)}
-                                  alt={feedback.product.name}
-                                  className="w-10 h-10 rounded object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.src = '/placeholder-product.png';
-                                  }}
-                                />
-                                <div>
-                                  <p className="font-medium text-sm">{feedback.product.name}</p>
-                                  <p className="text-xs text-gray-500">ID: {feedback.product.id}</p>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <img 
+                                    src={debugImageUrl(feedback.product?.image || '', `Product-${feedback.product?.id}`)}
+                                    alt={feedback.product?.name || 'Product'}
+                                    className="w-10 h-10 rounded object-cover"
+                                    onError={(e) => {
+                                      console.error('Image load failed:', feedback.product?.image);
+                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlmYTZiNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlByb2R1Y3Q8L3RleHQ+Cjwvc3ZnPgo=';
+                                    }}
+                                  />
+                                  <div>
+                                    <p className="font-medium text-sm">{feedback.product?.name || 'Unknown Product'}</p>
+                                    <p className="text-xs text-gray-500">ID: {feedback.product?.id || 'N/A'}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {renderStars(feedback.rating)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="max-w-xs">
-                                <p className="text-sm line-clamp-2" title={feedback.comment}>
-                                  {feedback.comment}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm text-gray-600">
-                                {formatDate(feedback.createdAt)}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setSelectedFeedback(feedback)}
-                                  title="Xem chi tiết"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setFeedbackToDelete(feedback.id);
-                                    setShowDeleteFeedbackDialog(true);
-                                  }}
-                                  title="Xóa feedback"
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                              </TableCell>
+                              <TableCell>
+                                {renderStars(feedback.rating)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-xs">
+                                  <p className="text-sm line-clamp-2" title={feedback.comment || ''}>
+                                    {feedback.comment || 'No comment'}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600">
+                                  {formatDate(feedback.createdAt)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setSelectedFeedback(feedback)}
+                                    title="Xem chi tiết"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setFeedbackToDelete(feedback.id);
+                                      setShowDeleteFeedbackDialog(true);
+                                    }}
+                                    title="Xóa feedback"
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </>
@@ -729,7 +782,7 @@ export default function FeedbackComplaintManagement() {
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     <p className="mt-2">Đang tải...</p>
                   </div>
-                ) : complaints.length === 0 ? (
+                ) : (complaints || []).length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-gray-500">Không tìm thấy khiếu nại nào</p>
                   </div>
@@ -747,43 +800,43 @@ export default function FeedbackComplaintManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {complaints.map((complaint) => (
+                        {(complaints || []).map((complaint) => (
                           <TableRow key={complaint.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
                                   <AvatarFallback className="text-xs">
-                                    {getInitials(complaint.order.nameCustomer)}
+                                    {getInitials(complaint.order?.nameCustomer)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium text-sm">{complaint.order.nameCustomer}</p>
-                                  <p className="text-xs text-gray-500">{complaint.order.phone}</p>
+                                  <p className="font-medium text-sm">{complaint.order?.nameCustomer || 'Unknown'}</p>
+                                  <p className="text-xs text-gray-500">{complaint.order?.phone || 'N/A'}</p>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div>
-                                <p className="font-medium text-sm">#{complaint.orderId}</p>
+                                <p className="font-medium text-sm">#{complaint.orderId || 'N/A'}</p>
                                 <p className="text-xs text-gray-500">
-                                  {complaint.order.total.toLocaleString('vi-VN')}đ
+                                  {(complaint.order?.total || 0).toLocaleString('vi-VN')}đ
                                 </p>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="max-w-xs">
-                                <p className="font-medium text-sm line-clamp-1" title={complaint.title}>
-                                  {complaint.title}
+                                <p className="font-medium text-sm line-clamp-1" title={complaint.title || ''}>
+                                  {complaint.title || 'No title'}
                                 </p>
-                                <p className="text-xs text-gray-500 line-clamp-1" title={complaint.description}>
-                                  {complaint.description}
+                                <p className="text-xs text-gray-500 line-clamp-1" title={complaint.description || ''}>
+                                  {complaint.description || 'No description'}
                                 </p>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 {getComplaintStatusIcon(complaint.status)}
-                                {getComplaintStatusBadge(complaint.status, complaint.statusText)}
+                                {getComplaintStatusBadge(complaint.status, complaint.statusText || 'Unknown')}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -801,7 +854,7 @@ export default function FeedbackComplaintManagement() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                {complaint.status === 0 || complaint.status === 1 ? (
+                                {(complaint.status === 0 || complaint.status === 1) && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -815,7 +868,7 @@ export default function FeedbackComplaintManagement() {
                                   >
                                     <Edit3 className="h-4 w-4" />
                                   </Button>
-                                ) : null}
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -833,7 +886,7 @@ export default function FeedbackComplaintManagement() {
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
                 {activeTab === 'feedback' ? (
-                  <>Hiển thị {startIndex + 1} - {Math.min(startIndex + pageSize, filteredFeedbacks.length)} trong {filteredFeedbacks.length} kết quả</>
+                  <>Hiển thị {startIndex + 1} - {Math.min(startIndex + pageSize, (filteredFeedbacks || []).length)} trong {(filteredFeedbacks || []).length} kết quả</>
                 ) : (
                   <>Hiển thị {startIndex + 1} - {Math.min(startIndex + pageSize, totalComplaintCount)} trong {totalComplaintCount} kết quả</>
                 )}
@@ -875,7 +928,7 @@ export default function FeedbackComplaintManagement() {
           )}
         </Tabs>
 
-        {/* Feedback Detail Modal */}
+        {/* Feedback Detail Modal - CẬP NHẬT ĐỂ XỬ LÝ IMAGEURL */}
         {selectedFeedback && (
           <Dialog open={!!selectedFeedback} onOpenChange={() => setSelectedFeedback(null)}>
             <DialogContent className="max-w-2xl">
@@ -887,27 +940,28 @@ export default function FeedbackComplaintManagement() {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
                     <AvatarFallback>
-                      {getInitials(selectedFeedback.user.fullName)}
+                      {getInitials(selectedFeedback.user?.fullName)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-medium">{selectedFeedback.user.fullName}</h3>
-                    <p className="text-sm text-gray-600">@{selectedFeedback.user.username}</p>
+                    <h3 className="font-medium">{selectedFeedback.user?.fullName || 'Unknown User'}</h3>
+                    <p className="text-sm text-gray-600">@{selectedFeedback.user?.username || 'unknown'}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <img 
-                    src={getFullImageUrl(selectedFeedback.product.image)} 
-                    alt={selectedFeedback.product.name}
+                    src={debugImageUrl(selectedFeedback.product?.image || '', `Modal-${selectedFeedback.product?.id}`)}
+                    alt={selectedFeedback.product?.name || 'Product'}
                     className="w-16 h-16 rounded object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = '/placeholder-product.png';
+                      console.error('Modal image load failed:', selectedFeedback.product?.image);
+                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlmYTZiNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlByb2R1Y3Q8L3RleHQ+Cjwvc3ZnPgo=';
                     }}
                   />
                   <div>
-                    <h4 className="font-medium">{selectedFeedback.product.name}</h4>
-                    <p className="text-sm text-gray-600">ID: {selectedFeedback.product.id}</p>
+                    <h4 className="font-medium">{selectedFeedback.product?.name || 'Unknown Product'}</h4>
+                    <p className="text-sm text-gray-600">ID: {selectedFeedback.product?.id || 'N/A'}</p>
                   </div>
                 </div>
 
@@ -921,7 +975,7 @@ export default function FeedbackComplaintManagement() {
                 <div>
                   <label className="text-sm font-medium text-gray-700">Nội dung:</label>
                   <p className="mt-1 p-3 bg-gray-50 rounded-lg text-sm">
-                    {selectedFeedback.comment}
+                    {selectedFeedback.comment || 'No comment'}
                   </p>
                 </div>
 
@@ -949,17 +1003,17 @@ export default function FeedbackComplaintManagement() {
                   <div>
                     <h4 className="font-medium mb-2">Thông tin khách hàng</h4>
                     <div className="space-y-1 text-sm">
-                      <p><strong>Tên:</strong> {selectedComplaint.order.nameCustomer}</p>
-                      <p><strong>SĐT:</strong> {selectedComplaint.order.phone}</p>
-                      <p><strong>Địa chỉ:</strong> {selectedComplaint.order.address}</p>
+                      <p><strong>Tên:</strong> {selectedComplaint.order?.nameCustomer || 'N/A'}</p>
+                      <p><strong>SĐT:</strong> {selectedComplaint.order?.phone || 'N/A'}</p>
+                      <p><strong>Địa chỉ:</strong> {selectedComplaint.order?.address || 'N/A'}</p>
                     </div>
                   </div>
                   <div>
                     <h4 className="font-medium mb-2">Thông tin đơn hàng</h4>
                     <div className="space-y-1 text-sm">
                       <p><strong>Mã đơn:</strong> #{selectedComplaint.orderId}</p>
-                      <p><strong>Tổng tiền:</strong> {selectedComplaint.order.total.toLocaleString('vi-VN')}đ</p>
-                      <p><strong>Thanh toán:</strong> {selectedComplaint.order.paymentMethod}</p>
+                      <p><strong>Tổng tiền:</strong> {(selectedComplaint.order?.total || 0).toLocaleString('vi-VN')}đ</p>
+                      <p><strong>Thanh toán:</strong> {selectedComplaint.order?.paymentMethod || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -985,7 +1039,8 @@ export default function FeedbackComplaintManagement() {
                               className="max-w-[300px] max-h-[200px] w-auto h-auto rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => handleImageClick(selectedComplaint.imageUrl!)}
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                console.error('Complaint image load failed:', selectedComplaint.imageUrl);
+                                (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlmYTZiNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pgo8L3N2Zz4K';
                               }}
                             />
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded-lg">
@@ -1070,7 +1125,8 @@ export default function FeedbackComplaintManagement() {
                 alt="Hình ảnh gốc"
                 className="max-w-full max-h-full w-auto h-auto object-contain"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                  console.error('Viewer image load failed:', viewerImageUrl);
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlmYTZiNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yPC90ZXh0Pgo8L3N2Zz4K';
                 }}
               />
             </div>
