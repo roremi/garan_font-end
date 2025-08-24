@@ -19,7 +19,9 @@ import {
   CheckCircle,
   XCircle,
   Edit3,
-  FileText
+  FileText,
+  ZoomIn,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,6 +139,10 @@ export default function FeedbackComplaintManagement() {
   const [showProcessDialog, setShowProcessDialog] = useState(false);
   const [processStatus, setProcessStatus] = useState<string>('1');
   const [adminResponse, setAdminResponse] = useState('');
+
+  // Image viewer states
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [viewerImageUrl, setViewerImageUrl] = useState('');
 
   // Statistics
   const [statistics, setStatistics] = useState<Statistics | null>(null);
@@ -326,6 +332,11 @@ export default function FeedbackComplaintManagement() {
       console.error('Error processing complaint:', error);
       toast.error('Không thể xử lý khiếu nại');
     }
+  };
+
+  const handleImageClick = (imageUrl: string) => {
+    setViewerImageUrl(imageUrl);
+    setShowImageViewer(true);
   };
 
   const getComplaintStatusBadge = (status: number, statusText: string) => {
@@ -948,21 +959,26 @@ export default function FeedbackComplaintManagement() {
                     </div>
                     {selectedComplaint.imageUrl && (
                       <div>
-                      <strong>Hình ảnh minh chứng:</strong>
-                      <div className="mt-2">
-                        <img 
-                        src={
-                          selectedComplaint.imageUrl
-                          ? `${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${selectedComplaint.imageUrl}`
-                          : '/placeholder-image.jpg'
-                        }
-                        alt="Minh chứng khiếu nại"
-                        className="max-w-full h-auto rounded-lg border"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
-                        }}
-                        />
-                      </div>
+                        <strong>Hình ảnh minh chứng:</strong>
+                        <div className="mt-2">
+                          <div className="relative inline-block group">
+                            <img 
+                              src={`${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${selectedComplaint.imageUrl}`}
+                              alt="Minh chứng khiếu nại"
+                              className="max-w-[300px] max-h-[200px] w-auto h-auto rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => handleImageClick(`${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${selectedComplaint.imageUrl}`)}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                              }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded-lg">
+                              <div className="bg-white bg-opacity-90 rounded-full p-2">
+                                <ZoomIn className="w-5 h-5 text-gray-700" />
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Nhấp để xem ảnh gốc</p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1014,6 +1030,35 @@ export default function FeedbackComplaintManagement() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Image Viewer Modal */}
+        <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
+          <DialogContent className="max-w-4xl w-full h-[90vh] p-2">
+            <DialogHeader className="px-4 py-2">
+              <div className="flex items-center justify-between">
+                <DialogTitle>Xem ảnh gốc</DialogTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowImageViewer(false)}
+                  className="h-6 w-6"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 flex items-center justify-center overflow-hidden p-4">
+              <img 
+                src={viewerImageUrl}
+                alt="Hình ảnh gốc"
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Process Complaint Dialog */}
         <Dialog open={showProcessDialog} onOpenChange={setShowProcessDialog}>
