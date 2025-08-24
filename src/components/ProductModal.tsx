@@ -34,35 +34,10 @@ interface ProductModalProps {
 
 export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: ProductModalProps) {
 
-  const getImageUrl = (imageUrl: string) => {
-    if (!imageUrl) return '';
-    
-    // Nếu imageUrl đã có giao thức (http/https) thì dùng trực tiếp
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      // Xử lý trường hợp có || trong URL như dữ liệu mẫu
-      if (imageUrl.includes(' || ')) {
-        return imageUrl.split(' || ')[0];
-      }
-      return imageUrl;
-    }
-    
-    // Nếu là đường dẫn /images/ (dữ liệu mẫu cũ) thì giữ nguyên, Next.js sẽ xử lý
-    if (imageUrl.startsWith('/images/')) {
-      return imageUrl;
-    }
-    
-    // Nếu là đường dẫn tương đối khác, ghép với backend URL
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
-    
-    // Xử lý trường hợp imageUrl bắt đầu bằng /
-    if (imageUrl.startsWith('/')) {
-      return `${backendUrl}${imageUrl}`;
-    }
-    
-    // Xử lý trường hợp imageUrl là đường dẫn như "uploads/filename.webp"
-    return `${backendUrl}/${imageUrl}`;
+  const getImageUrl = (filePath: string) => {
+    if (!filePath) return '';
+    return `${process.env.NEXT_PUBLIC_BACKEND_API}/${filePath} || "http://localhost:5000"}/${filePath}`;
   };
-
   // State Management
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -144,7 +119,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
       setImageLoading(true);
       const response = await api.uploadImage(file);
       
-      // Sử dụng filePath từ response và tạo URL đầy đủ
+      // Sử dụng filePath thay vì fileName
       const imageUrl = getImageUrl(response.filePath);
 
       setFormData(prev => ({
@@ -259,7 +234,7 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
                 {formData.imageUrl ? (
                   <>
                     <Image
-                      src={getImageUrl(formData.imageUrl)}
+                      src={formData.imageUrl}
                       alt="Product"
                       fill
                       className="object-cover"
