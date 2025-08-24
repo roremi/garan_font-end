@@ -42,7 +42,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onNavig
       <div className="h-48 bg-gray-100 relative overflow-hidden">
         {product.imageUrl ? (
           <Image
-            src={product.imageUrl}
+            src={product.imageUrl.split(' || ')[0]}
             alt={product.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
