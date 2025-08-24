@@ -167,12 +167,12 @@ export default function ProductDetail() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
               <Image
-                src={product.imageUrl || '/images/placeholder.jpg'}
-                alt={product.name}
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
+              src={product.imageUrl ? product.imageUrl.split(' || ')[0] : '/images/placeholder.jpg'}
+              alt={product.name}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
               />
             </div>
 
