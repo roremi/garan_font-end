@@ -36,9 +36,22 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
 
   const getImageUrl = (filePath: string) => {
     if (!filePath) return '';
-    return `${process.env.NEXT_PUBLIC_BACKEND_API}/${filePath} || "http://localhost:5000"}/${filePath}`;
+    return `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/${filePath}`;
   };
-  // State Management
+
+  const getFullImageUrl = (filePath: string) => {
+    if (!filePath) return '';
+    
+    // Nếu đã là full URL, trả về nguyên bản
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    
+    // Nếu là relative path, thêm base URL
+    return `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/${filePath}`;
+  };
+
+  // State Management - lưu trữ relative path trong formData
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     description: '',
@@ -103,9 +116,16 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
         isAvailable: true,
       });
     } else if (product && mode === 'edit') {
+      // Khi edit, chuyển full URL về relative path để lưu trong state
+      let imageUrl = product.imageUrl || '';
+      if (imageUrl && imageUrl.includes(process.env.NEXT_PUBLIC_BACKEND_API_URL || '')) {
+        imageUrl = imageUrl.replace(process.env.NEXT_PUBLIC_BACKEND_API_URL + '/', '');
+      }
+      
       setFormData({
         ...product,
-        price: Number(product.price)
+        price: Number(product.price),
+        imageUrl: imageUrl
       });
     }
   }, [product, mode, isOpen, categories]);
@@ -119,12 +139,10 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
       setImageLoading(true);
       const response = await api.uploadImage(file);
       
-      // Sử dụng filePath thay vì fileName
-      const imageUrl = getImageUrl(response.filePath);
-
+      // Lưu trữ relative path trong formData
       setFormData(prev => ({
         ...prev,
-        imageUrl: imageUrl,
+        imageUrl: response.filePath || response.fileName,
         imageId: response.id
       }));
 
@@ -198,8 +216,13 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
       const submitData = {
         ...formData,
         price: Number(formData.price),
-        categoryId: Number(formData.categoryId)
+        categoryId: Number(formData.categoryId),
+        // Chuyển imageUrl thành full URL khi submit
+        imageUrl: formData.imageUrl ? getFullImageUrl(formData.imageUrl) : ''
       };
+      
+      console.log('Submit data:', submitData); // Debug log
+      
       await onSubmit(submitData);
       onClose();
       toast({
@@ -217,6 +240,9 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
     }
   };
 
+  // Get the display URL for the current image (full URL for display)
+  const displayImageUrl = formData.imageUrl ? getImageUrl(formData.imageUrl) : '';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -231,13 +257,17 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
             <Label>Hình ảnh</Label>
             <div className="flex items-center gap-4">
               <div className="relative h-24 w-24 border rounded-lg overflow-hidden">
-                {formData.imageUrl ? (
+                {displayImageUrl ? (
                   <>
                     <Image
-                      src={formData.imageUrl}
+                      src={displayImageUrl}
                       alt="Product"
                       fill
                       className="object-cover"
+                      onError={(e) => {
+                        console.error('Image failed to load:', displayImageUrl);
+                        console.error('Original imageUrl:', formData.imageUrl);
+                      }}
                     />
                     <Button
                       type="button"
