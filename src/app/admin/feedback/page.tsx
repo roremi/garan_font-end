@@ -169,7 +169,7 @@ export default function FeedbackComplaintManagement() {
       // Load complaints và complaint statistics
       const [complaintsData, complaintStats] = await Promise.all([
         api.getAllComplaints({ page: 1, pageSize }),
-        api.getComplaintStatistics()
+        api.getComplaintStatisticsAdmin()
       ]);
 
       setProducts(productsData);
