@@ -147,6 +147,13 @@ export default function FeedbackComplaintManagement() {
   // Statistics
   const [statistics, setStatistics] = useState<Statistics | null>(null);
 
+  // Helper function to get full image URL
+  const getFullImageUrl = (imagePath: string) => {
+    if (!imagePath) return '/placeholder-image.jpg';
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${imagePath}`;
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -335,7 +342,8 @@ export default function FeedbackComplaintManagement() {
   };
 
   const handleImageClick = (imageUrl: string) => {
-    setViewerImageUrl(imageUrl);
+    const fullUrl = getFullImageUrl(imageUrl);
+    setViewerImageUrl(fullUrl);
     setShowImageViewer(true);
   };
 
@@ -636,7 +644,7 @@ export default function FeedbackComplaintManagement() {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <img 
-                                  src={feedback.product.image} 
+                                  src={getFullImageUrl(feedback.product.image)} 
                                   alt={feedback.product.name}
                                   className="w-10 h-10 rounded object-cover"
                                   onError={(e) => {
@@ -881,7 +889,7 @@ export default function FeedbackComplaintManagement() {
 
                 <div className="flex items-center gap-4">
                   <img 
-                    src={selectedFeedback.product.image} 
+                    src={getFullImageUrl(selectedFeedback.product.image)} 
                     alt={selectedFeedback.product.name}
                     className="w-16 h-16 rounded object-cover"
                     onError={(e) => {
@@ -963,10 +971,10 @@ export default function FeedbackComplaintManagement() {
                         <div className="mt-2">
                           <div className="relative inline-block group">
                             <img 
-                              src={`${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${selectedComplaint.imageUrl}`}
+                              src={getFullImageUrl(selectedComplaint.imageUrl)}
                               alt="Minh chứng khiếu nại"
                               className="max-w-[300px] max-h-[200px] w-auto h-auto rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => handleImageClick(`${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${selectedComplaint.imageUrl}`)}
+                              onClick={() => handleImageClick(selectedComplaint.imageUrl!)}
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
                               }}
@@ -1033,15 +1041,15 @@ export default function FeedbackComplaintManagement() {
 
         {/* Image Viewer Modal */}
         <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
-          <DialogContent className="max-w-4xl w-full h-[90vh] p-2">
-            <DialogHeader className="px-4 py-2">
+          <DialogContent className="max-w-4xl w-full h-[90vh] p-0">
+            <DialogHeader className="px-4 py-3 border-b">
               <div className="flex items-center justify-between">
                 <DialogTitle>Xem ảnh gốc</DialogTitle>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowImageViewer(false)}
-                  className="h-6 w-6"
+                  className="h-8 w-8"
                 >
                   <X className="h-4 w-4" />
                 </Button>
