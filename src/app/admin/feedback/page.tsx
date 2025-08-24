@@ -149,9 +149,18 @@ export default function FeedbackComplaintManagement() {
 
   // Helper function to get full image URL
   const getFullImageUrl = (imagePath: string) => {
-    if (!imagePath) return '/placeholder-image.jpg';
+    if (!imagePath) return '/placeholder-product.png';
     if (imagePath.startsWith('http')) return imagePath;
-    return `${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${imagePath}`;
+    
+    // Handle placeholder cases
+    if (imagePath === 'placeholder-product.png' || imagePath === '/placeholder-product.png') {
+      return '/placeholder-product.png';
+    }
+    
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000';
+    // Remove leading slash if present to avoid double slashes
+    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+    return `${baseUrl}/${cleanPath}`;
   };
 
   useEffect(() => {
@@ -175,7 +184,7 @@ export default function FeedbackComplaintManagement() {
     try {
       // Load products và feedbacks song song
       const [productsData, feedbacksData] = await Promise.all([
-        api.getProducts(), // Sửa từ getAllProducts thành getProducts
+        api.getProducts(),
         api.getAllFeedbacksForAdmin()
       ]);
 
@@ -192,7 +201,7 @@ export default function FeedbackComplaintManagement() {
       setTotalComplaintCount(complaintsData.pagination.totalCount);
 
       // Calculate combined statistics
-      const calculatedFeedbackStats = calculateFeedbackStatistics(feedbacksData); // Đổi tên biến
+      const calculatedFeedbackStats = calculateFeedbackStatistics(feedbacksData);
       const combinedStats = {
         ...calculatedFeedbackStats,
         ...complaintStats
@@ -306,7 +315,7 @@ export default function FeedbackComplaintManagement() {
       setFeedbacks(updatedFeedbacks);
       
       // Recalculate stats
-      const updatedFeedbackStats = calculateFeedbackStatistics(updatedFeedbacks); // Đổi tên biến
+      const updatedFeedbackStats = calculateFeedbackStatistics(updatedFeedbacks);
       setStatistics(prev => prev ? { ...prev, ...updatedFeedbackStats } : null);
       
       toast.success('Đã xóa feedback thành công');
@@ -643,18 +652,18 @@ export default function FeedbackComplaintManagement() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                              <img 
-                                src={`${process.env.NEXT_PUBLIC_BACKEND_API}/${feedback.product.image}`}
-                                alt={feedback.product.name}
-                                className="w-10 h-10 rounded object-cover"
-                                onError={(e) => {
-                                e.currentTarget.src = '/placeholder-product.png';
-                                }}
-                              />
-                              <div>
-                                <p className="font-medium text-sm">{feedback.product.name}</p>
-                                <p className="text-xs text-gray-500">ID: {feedback.product.id}</p>
-                              </div>
+                                <img 
+                                  src={getFullImageUrl(feedback.product.image)}
+                                  alt={feedback.product.name}
+                                  className="w-10 h-10 rounded object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.src = '/placeholder-product.png';
+                                  }}
+                                />
+                                <div>
+                                  <p className="font-medium text-sm">{feedback.product.name}</p>
+                                  <p className="text-xs text-gray-500">ID: {feedback.product.id}</p>
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>

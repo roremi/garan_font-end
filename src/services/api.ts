@@ -1595,7 +1595,9 @@ async getAllFeedbacksForAdmin(): Promise<any[]> {
           product: {
             id: product.id,
             name: product.name,
-            image: product.imageId ? `${API_URL}/uploads/${product.imageId}` : '/placeholder-product.png' // Tạo URL đầy đủ từ imageId
+            image: product.imageId 
+              ? `uploads/${product.imageId}` // Chỉ lưu path tương đối
+              : 'placeholder-product.png'
           }
         }));
       } catch (error) {
