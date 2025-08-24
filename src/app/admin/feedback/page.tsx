@@ -948,12 +948,21 @@ export default function FeedbackComplaintManagement() {
                     </div>
                     {selectedComplaint.imageUrl && (
                       <div>
-                        <strong>Hình ảnh:</strong>
+                      <strong>Hình ảnh minh chứng:</strong>
+                      <div className="mt-2">
                         <img 
-                          src={selectedComplaint.imageUrl} 
-                          alt="Khiếu nại"
-                          className="mt-1 max-w-md rounded-lg"
+                        src={
+                          selectedComplaint.imageUrl
+                          ? `${process.env.NEXT_PUBLIC_BACKEND_API || 'http://103.82.27.97:5000'}/${selectedComplaint.imageUrl}`
+                          : '/placeholder-image.jpg'
+                        }
+                        alt="Minh chứng khiếu nại"
+                        className="max-w-full h-auto rounded-lg border"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                        }}
                         />
+                      </div>
                       </div>
                     )}
                   </div>
