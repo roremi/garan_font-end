@@ -643,18 +643,18 @@ export default function FeedbackComplaintManagement() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <img 
-                                  src={getFullImageUrl(feedback.product.image)} 
-                                  alt={feedback.product.name}
-                                  className="w-10 h-10 rounded object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.src = '/placeholder-product.png';
-                                  }}
-                                />
-                                <div>
-                                  <p className="font-medium text-sm">{feedback.product.name}</p>
-                                  <p className="text-xs text-gray-500">ID: {feedback.product.id}</p>
-                                </div>
+                              <img 
+                                src={`${process.env.NEXT_PUBLIC_BACKEND_API}/${feedback.product.image}`}
+                                alt={feedback.product.name}
+                                className="w-10 h-10 rounded object-cover"
+                                onError={(e) => {
+                                e.currentTarget.src = '/placeholder-product.png';
+                                }}
+                              />
+                              <div>
+                                <p className="font-medium text-sm">{feedback.product.name}</p>
+                                <p className="text-xs text-gray-500">ID: {feedback.product.id}</p>
+                              </div>
                               </div>
                             </TableCell>
                             <TableCell>
