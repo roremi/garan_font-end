@@ -138,27 +138,80 @@ export const api = {
     if (!response.ok) throw new Error("Failed to update category");
   },
   // Xóa category
-  deleteCategory: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_URL}/Category/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+deleteCategory: async (id: number): Promise<{message: string, deletedCategoryId: number, affectedProductsCount: number, note: string}> => {
+  const response = await fetch(`${API_URL}/Category/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
 
-    if (!response.ok) {
-      throw new Error("Failed to delete category");
-    }
-  },
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Failed to delete category");
+  }
+  
+  return response.json();
+},
 
   // Lấy tất cả sản phẩm trong một category
   async getProductsByCategory(categoryId: number): Promise<Product[]> {
-    const response = await fetch(`${API_URL}/Category/${categoryId}/products`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch products by category");
-    }
-    return response.json();
-  },
+  const response = await fetch(`${API_URL}/Category/${categoryId}/products`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch products by category");
+  }
+  return response.json();
+},
+  // Lấy sản phẩm không có category
+async getProductsWithoutCategory(): Promise<Product[]> {
+  const response = await fetch(`${API_URL}/Category/products-without-category`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch products without category");
+  }
+  return response.json();
+},
+
+// Thêm sản phẩm vào category
+async addProductToCategory(categoryId: number, productId: number): Promise<{message: string, productId: number, categoryId: number}> {
+  const response = await fetch(`${API_URL}/Category/${categoryId}/add-product/${productId}`, {
+    method: "PUT",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Failed to add product to category");
+  }
+  return response.json();
+},
+
+// Xóa sản phẩm khỏi category
+async removeProductFromCategory(productId: number): Promise<{message: string, productId: number, oldCategoryId: number | null}> {
+  const response = await fetch(`${API_URL}/Category/remove-product/${productId}`, {
+    method: "PUT", 
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Failed to remove product from category");
+  }
+  return response.json();
+},
+
+// Chuyển sản phẩm sang category khác
+async moveProductToCategory(productId: number, newCategoryId: number): Promise<{message: string, productId: number, oldCategoryId: number | null, newCategoryId: number}> {
+  const response = await fetch(`${API_URL}/Category/move-product/${productId}/${newCategoryId}`, {
+    method: "PUT",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Failed to move product to category");
+  }
+  return response.json();
+},
+
+
+
 
   async uploadImage(file: File): Promise<ImageUploadResponse> {
     const formData = new FormData();
