@@ -30,6 +30,7 @@ interface ComboModalProps {
   combo?: Combo;
   mode: 'add' | 'edit';
 }
+const BACKEND_API_URL = 'https://api.garancuctac.com';
 
 export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModalProps) {
   const [formData, setFormData] = useState<Partial<Combo>>({
@@ -57,7 +58,7 @@ export function ComboModal({ isOpen, onClose, onSubmit, combo, mode }: ComboModa
 
   const getImageUrl = (filePath: string) => {
     if (!filePath) return '';
-    return `${process.env.NEXT_PUBLIC_BACKEND_API}/${filePath} || "http://localhost:5000"}/${filePath}`;
+    return `${BACKEND_API_URL}/${filePath}`;
   };
 
   const loadInitialData = async () => {
