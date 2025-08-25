@@ -24,6 +24,8 @@ import { Product } from '@/types/product';
 import { Category } from '@/types/Category';
 import { api } from '@/services/api';
 
+const BACKEND_API_URL = 'https://api.garancuctac.com';
+
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,19 +38,17 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
 
   const getImageUrl = (filePath: string) => {
     if (!filePath) return '';
-    return `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/${filePath}`;
+    return `${BACKEND_API_URL}/${filePath}`;
   };
 
   const getFullImageUrl = (filePath: string) => {
     if (!filePath) return '';
-    
     // Nếu đã là full URL, trả về nguyên bản
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
-    
     // Nếu là relative path, thêm base URL
-    return `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/${filePath}`;
+    return `${BACKEND_API_URL}/${filePath}`;
   };
 
   // State Management - lưu trữ relative path trong formData
@@ -118,8 +118,8 @@ export function ProductModal({ isOpen, onClose, onSubmit, product, mode }: Produ
     } else if (product && mode === 'edit') {
       // Khi edit, chuyển full URL về relative path để lưu trong state
       let imageUrl = product.imageUrl || '';
-      if (imageUrl && imageUrl.includes(process.env.NEXT_PUBLIC_BACKEND_API_URL || '')) {
-        imageUrl = imageUrl.replace(process.env.NEXT_PUBLIC_BACKEND_API_URL + '/', '');
+      if (imageUrl && imageUrl.includes(BACKEND_API_URL)) {
+        imageUrl = imageUrl.replace(BACKEND_API_URL + '/', '');
       }
       
       setFormData({
