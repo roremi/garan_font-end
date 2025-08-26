@@ -1554,10 +1554,18 @@ createSegmentationRule: async (ruleData: {
   priority: number;
   isActive: boolean;
 }) => {
+  const payload = {
+    segmentName: ruleData.name,   // đổi name -> segmentName
+    description: ruleData.segmentType, // nếu segmentType mô tả thì map vào description
+    priority: ruleData.priority,
+    isActive: ruleData.isActive,
+    // TODO: nếu conditions cần map sang MinTotalSpent, MaxOrderCount... thì xử lý ở đây
+  };
+
   const response = await fetch(`${API_URL}/admin/segmentation-rules`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(ruleData)
+    body: JSON.stringify(payload)
   });
   if (!response.ok) throw new Error('Không thể tạo quy tắc phân khúc');
   return response.json();
@@ -1571,10 +1579,18 @@ updateSegmentationRule: async (id: number, ruleData: {
   priority: number;
   isActive: boolean;
 }) => {
+  const payload = {
+    segmentName: ruleData.name,   // đổi name -> segmentName
+    description: ruleData.segmentType,
+    priority: ruleData.priority,
+    isActive: ruleData.isActive,
+    // TODO: map conditions tương tự create
+  };
+
   const response = await fetch(`${API_URL}/admin/segmentation-rules/${id}`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify(ruleData)
+    body: JSON.stringify(payload)
   });
   if (!response.ok) throw new Error('Không thể cập nhật quy tắc phân khúc');
   return response.json();
@@ -1609,6 +1625,7 @@ seedDefaultSegmentationRules: async () => {
   if (!response.ok) throw new Error('Không thể tạo quy tắc mặc định');
   return response.json();
 },
+
 
 // Complaint APIs
 // Tạo khiếu nại mới
