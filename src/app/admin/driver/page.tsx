@@ -67,7 +67,7 @@ export default function ShipperManagement() {
       return;
     }
     
-   if (Number(user.role) !== 0) {
+if (Number(user.role) !== 0 && Number(user.role) !== 1) {
          toast.error('Bạn không có quyền truy cập trang Admin');
          router.push('/');
          return;

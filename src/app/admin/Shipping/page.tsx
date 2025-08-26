@@ -37,7 +37,7 @@ export default function ShippingPage() {
       return;
     }
 
-    if (Number(user.role) !== 0) {
+    if (Number(user.role) !== 0 && Number(user.role) !== 1) {
       toast({
         title: "Không có quyền truy cập",
         description: "Bạn không có quyền truy cập trang cấu hình phí ship",
