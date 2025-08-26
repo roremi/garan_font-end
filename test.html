@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🤖 AI Title Optimizer - Stream Tester</title>
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 15px; 
+            padding: 30px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 { 
+            text-align: center; 
+            color: #333; 
+            margin-bottom: 30px; 
+            font-size: 2.5em;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f9f9f9;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #555;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .input-group { 
+            margin: 15px 0; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: #555; 
+        }
+        input, textarea, select { 
+            padding: 12px; 
+            margin: 5px 0; 
+            width: 100%; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus { 
+            border-color: #667eea; 
+            outline: none; 
+        }
+        button { 
+            padding: 12px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary { 
+            background: linear-gradient(45deg, #667eea, #764ba2); 
+            color: white; 
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn-secondary { 
+            background: #6c757d; 
+            color: white; 
+        }
+        .btn-test { 
+            background: #28a745; 
+            color: white; 
+            font-size: 14px; 
+            padding: 8px 12px;
+        }
+        .btn-auth { 
+            background: #17a2b8; 
+            color: white; 
+        }
+        #result { 
+            border: 2px solid #ddd; 
+            padding: 20px; 
+            min-height: 120px; 
+            background: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .streaming { 
+            border-color: #007bff !important; 
+            color: #007bff; 
+            animation: pulse 1s infinite;
+        }
+        .done { 
+            border-color: #28a745 !important; 
+            color: #28a745; 
+        }
+        .error { 
+            border-color: #dc3545 !important; 
+            color: #dc3545; 
+            background: #fff5f5;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        #status { 
+            margin-top: 15px; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-style: italic;
+            text-align: center;
+        }
+        .status-connecting { background: #fff3cd; color: #856404; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .test-cases {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .auth-section {
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .auth-section input {
+            background: rgba(255,255,255,0.9);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Title Optimizer</h1>
+        <p style="text-align: center; color: #666; font-style: italic;">
+            Real-time ChatGPT streaming API tester by <strong>roremi</strong> | 
+            <span id="currentTime">2025-08-26 16:31:28 UTC</span>
+        </p>
+        
+        <!-- Authentication Section -->
+        <div class="section auth-section">
+            <h3>🔐 Authentication</h3>
+            <div class="input-group">
+                <label>API Endpoint:</label>
+                <input type="text" id="apiUrl" value="http://localhost:5000/api/admin/campaigns/optimize/title">
+            </div>
+            <div class="input-group">
+                <label>JWT Token:</label>
+                <input type="password" id="token" 
+                       value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiI0IiwiZW1haWwiOiJyb3JlbWkxMjNAZ21haWwuY29tIiwicm9sZSI6IkFkbWluIiwibmJmIjoxNzU2MjI1MDE2LCJleHAiOjE3NTY0NDEwMTYsImlhdCI6MTc1NjIyNTAxNiwiaXNzIjoiRmFzdEZvb2RBUEkiLCJhdWQiOiJGYXN0Rm9vZENsaWVudCJ9.1ZD_M6oB_YhdBjI6oj_k8ilNsAKihO-ZCjpc-YveUZ0"
+                       placeholder="Paste your JWT token here...">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-auth" onclick="testConnection()">🔗 Test Connection</button>
+                <button class="btn-auth" onclick="toggleToken()">👁️ Show/Hide Token</button>
+                <button class="btn-auth" onclick="loginModal()">🔑 Get New Token</button>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="section">
+            <h3>📝 Content Input</h3>
+            <div class="input-group">
+                <label>Content (Current title to optimize):</label>
+                <input type="text" id="content" value="Sale 50% all items" 
+                       placeholder="Enter your current email title...">
+            </div>
+            
+            <div class="input-group">
+                <label>Custom Prompt (AI Instructions):</label>
+                <textarea id="prompt" rows="3" 
+                         placeholder="Tell AI how to optimize the title...">Make it catchy with emoji for Vietnamese customers, create urgency</textarea>
+            </div>
+
+            <div class="input-group">
+                <label>Quick Templates:</label>
+                <select onchange="loadTemplate(this.value)">
+                    <option value="">-- Select Template --</option>
+                    <option value="urgency">Create Urgency & FOMO</option>
+                    <option value="vip">VIP Customer Focus</option>
+                    <option value="discount">Discount Emphasis</option>
+                    <option value="new">New Product Launch</option>
+                    <option value="weekend">Weekend Special</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="btn-primary" onclick="testStream()">🚀 Start AI Optimization</button>
+            <button class="btn-secondary" onclick="clearResult()">🗑️ Clear Result</button>
+            <button class="btn-secondary" onclick="copyResult()">📋 Copy Result</button>
+        </div>
+
+        <!-- Quick Test Cases -->
+        <div class="section">
+            <h3>🧪 Quick Test Cases</h3>
+            <div class="test-cases">
+                <button class="btn-test" onclick="loadTestCase(0)">🔥 Flash Sale</button>
+                <button class="btn-test" onclick="loadTestCase(1)">🍔 New Burger</button>
+                <button class="btn-test" onclick="loadTestCase(2)">👑 VIP Offer</button>
+                <button class="btn-test" onclick="loadTestCase(3)">🎉 Grand Opening</button>
+                <button class="btn-test" onclick="loadTestCase(4)">⏰ Limited Time</button>
+                <button class="btn-test" onclick="loadTestCase(5)">🎯 Customer Focus</button>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div class="section">
+            <h3>📊 AI Generated Result</h3>
+            <div id="result">Click "Start AI Optimization" to see ChatGPT generate optimized title in real-time...</div>
+            <div id="status"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="testCount">0</div>
+                <div class="stat-label">Tests Run</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgTime">0s</div>
+                <div class="stat-label">Avg Response Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="successRate">100%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lastLength">0</div>
+                <div class="stat-label">Last Title Length</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let testCount = 0;
+        let successCount = 0;
+        let totalTime = 0;
+        let startTime = 0;
+
+        // Test cases data
+        const testCases = [
+            {
+                content: "Flash sale cuối tuần",
+                prompt: "Tạo urgency và FOMO cho khách hàng trẻ, sử dụng emoji hấp dẫn"
+            },
+            {
+                content: "Combo burger mới ra mắt", 
+                prompt: "Nhấn mạnh độ tươi ngon và giá cả hợp lý, thu hút food lover"
+            },
+            {
+                content: "Ưu đãi đặc biệt thành viên VIP",
+                prompt: "Tạo cảm giác đặc biệt và sang trọng, exclusive feeling"
+            },
+            {
+                content: "Khai trương chi nhánh mới",
+                prompt: "Tạo sự phấn khích và mời gọi khách hàng đến trải nghiệm"
+            },
+            {
+                content: "Chỉ còn 24h để nhận ưu đãi",
+                prompt: "Tối đa hóa cảm giác cấp bách và khan hiếm"
+            },
+            {
+                content: "Dành riêng cho khách hàng thân thiết",
+                prompt: "Nhấn mạnh sự trân trọng và giá trị khách hàng"
+            }
+        ];
+
+        // Template prompts
+        const templates = {
+            urgency: "Tạo cảm giác cấp bách và FOMO, sử dụng từ ngữ thúc đẩy hành động ngay lập tức",
+            vip: "Tập trung vào khách hàng VIP, tạo cảm giác đặc biệt và độc quyền",
+            discount: "Nhấn mạnh mức giảm giá, lợi ích tiết kiệm và giá trị nhận được",
+            new: "Tạo sự tò mò và phấn khích cho sản phẩm/dịch vụ mới",
+            weekend: "Tối ưu cho chương trình cuối tuần, tạo không khí vui tươi",
+        };
+
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            const utc = now.toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+            document.getElementById('currentTime').textContent = utc;
+        }
+        setInterval(updateTime, 1000);
+
+        // Main stream test function
+        async function testStream() {
+            const content = document.getElementById('content').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            const token = document.getElementById('token').value.trim();
+            const apiUrl = document.getElementById('apiUrl').value.trim();
+            const resultDiv = document.getElementById('result');
+            const statusDiv = document.getElementById('status');
+            
+            if (!content) {
+                alert('⚠️ Please enter content to optimize!');
+                return;
+            }
+            
+            if (!token) {
+                alert('⚠️ Please enter JWT token!');
+                return;
+            }
+
+            // Reset UI
+            resultDiv.innerHTML = '';
+            resultDiv.className = 'streaming';
+            statusDiv.className = 'status-connecting';
+            statusDiv.innerHTML = '🤖 Connecting to AI... Please wait...';
+            
+            testCount++;
+            startTime = Date.now();
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'text/event-stream'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        prompt: prompt || "Optimize this title for better email open rates"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                statusDiv.className = 'status-success';
+                statusDiv.innerHTML = '✅ Connected! ChatGPT is generating title...';
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResult = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        const endTime = Date.now();
+                        const duration = (endTime - startTime) / 1000;
+                        totalTime += duration;
+                        successCount++;
+                        
+                        statusDiv.innerHTML = `🎉 Optimization completed in ${duration.toFixed(1)}s!`;
+                        updateStats(fullResult.length);
+                        break;
+                    }
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    lines.forEach(line => {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            if (data === '[DONE]') {
+                                resultDiv.className = 'done';
+                            } else if (data.trim()) {
+                                resultDiv.innerHTML += data;
+                                fullResult += data;
+                            }
+                        }
+                    });
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `❌ Error: ${error.message}\n\n💡 Possible solutions:\n• Check if server is running on ${apiUrl.split('/api')[0]}\n• Verify JWT token is valid\n• Ensure CORS is enabled\n• Try refreshing the token`;
+                statusDiv.className = 'status-error';
+                statusDiv.innerHTML = '💔 Connection failed';
+                updateStats(0);
+                console.error('Stream error:', error);
+            }
+        }
+
+        // Update statistics
+        function updateStats(titleLength) {
+            document.getElementById('testCount').textContent = testCount;
+            document.getElementById('avgTime').textContent = successCount > 0 ? 
+                (totalTime / successCount).toFixed(1) + 's' : '0s';
+            document.getElementById('successRate').textContent = testCount > 0 ? 
+                Math.round((successCount / testCount) * 100) + '%' : '100%';
+            document.getElementById('lastLength').textContent = titleLength;
+        }
+
+        // Load test case
+        function loadTestCase(index) {
+            if (index < testCases.length) {
+                document.getElementById('content').value = testCases[index].content;
+                document.getElementById('prompt').value = testCases[index].prompt;
+            }
+        }
+
+        // Load template
+        function loadTemplate(templateKey) {
+            if (templates[templateKey]) {
+                document.getElementById('prompt').value = templates[templateKey];
+            }
+        }
+
+        // Utility functions
+        function clearResult() {
+            document.getElementById('result').innerHTML = 'Click "Start AI Optimization" to see ChatGPT generate optimized title in real-time...';
+            document.getElementById('result').className = '';
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('status').className = '';
+        }
+
+        function copyResult() {
+            const result = document.getElementById('result').textContent;
+            if (result && !result.includes('Click "Start')) {
+                navigator.clipboard.writeText(result).then(() => {
+                    alert('✅ Result copied to clipboard!');
+                });
+            } else {
+                alert('⚠️ No result to copy!');
+            }
+        }
+
+        function toggleToken() {
+            const tokenInput = document.getElementById('token');
+            tokenInput.type = tokenInput.type === 'password' ? 'text' : 'password';
+        }
+
+        async function testConnection() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const token = document.getElementById('token').value;
+            
+            try {
+                const baseUrl = apiUrl.split('/api')[0];
+                const response = await fetch(baseUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                alert(`✅ Connection test result:\nServer: ${response.ok ? 'Online' : 'Error ' + response.status}\nToken: ${token ? 'Present' : 'Missing'}`);
+            } catch (error) {
+                alert(`❌ Connection failed:\n${error.message}`);
+            }
+        }
+
+        function loginModal() {
+            const loginUrl = document.getElementById('apiUrl').value.replace('/campaigns/optimize/title', '').replace('/admin', '') + '/auth/login';
+            const message = `To get a new JWT token, send a POST request to:\n\n${loginUrl}\n\nWith body:\n{\n  "email": "your-email@domain.com",\n  "password": "your-password"\n}\n\nOr use your API client (Postman/curl) to login.`;
+            alert(message);
+        }
+
+        // Auto-focus on content input when page loads
+        window.onload = function() {
+            document.getElementById('content').focus();
+        };
+
+        // Enter key shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.key === 'Enter') {
+                testStream();
+            }
+        });
+    </script>
+
+    <div style="text-align: center; margin-top: 30px; color: #666; font-size: 12px;">
+        <p>💡 <strong>Tips:</strong> Use Ctrl+Enter to quick test | Check console (F12) for debug info</p>
+        <p>🔧 Built for FastFood API testing by <strong>roremi</strong> | Current server: localhost:5000</p>
+    </div>
+</body>
+</html>
