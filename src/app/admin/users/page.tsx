@@ -46,6 +46,23 @@ interface EditFormData {
   isActive?: boolean;
 }
 
+// Helper function to get role display info
+const getRoleInfo = (role: string | number) => {
+  const roleNum = Number(role);
+  switch (roleNum) {
+    case 0:
+      return { name: 'Admin', bgColor: 'bg-purple-100', textColor: 'text-purple-800' };
+    case 1:
+      return { name: 'Staff', bgColor: 'bg-blue-100', textColor: 'text-blue-800' };
+    case 2:
+      return { name: 'Customer', bgColor: 'bg-green-100', textColor: 'text-green-800' };
+    case 3:
+      return { name: 'Shipper', bgColor: 'bg-orange-100', textColor: 'text-orange-800' };
+    default:
+      return { name: 'Unknown', bgColor: 'bg-gray-100', textColor: 'text-gray-800' };
+  }
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -171,9 +188,7 @@ export default function AdminDashboard() {
     });
   };
   
- // Thêm state mới ở đầu component
-
- const handleSaveChanges = async () => {
+  const handleSaveChanges = async () => {
   if (!editingUserId) return;
   
   try {
@@ -190,13 +205,23 @@ export default function AdminDashboard() {
     
     const updatedUser = await authService.adminUpdateUser(editingUserId, updateData);
     
+    // SỬA LẠI PHẦN NÀY - cập nhật state users
     setUsers((prevUsers) =>
       prevUsers.map((u) =>
         u.id === editingUserId
           ? {
               ...u,
-              ...updatedUser,
-              role: updatedUser.role ? Number(updatedUser.role) : u.role
+              // Cập nhật tất cả các field từ editFormData
+              username: editFormData.username || u.username,
+              email: editFormData.email || u.email,
+              fullName: editFormData.fullName || u.fullName,
+              phoneNumber: editFormData.phoneNumber || u.phoneNumber,
+              address: editFormData.address || u.address,
+              role: editFormData.role ? Number(editFormData.role) : u.role, // Đảm bảo convert về number
+              isActive: editFormData.isActive !== undefined ? editFormData.isActive : u.isActive,
+              // Giữ nguyên các field khác
+              id: u.id,
+              createdAt: u.createdAt
             }
           : u
       )
@@ -222,15 +247,13 @@ export default function AdminDashboard() {
     setEditingUserId(null);
     setEditFormData({});
   } catch (error: any) {
-    await authService.logout();
-    logout();
+    // Nếu có lỗi, reload lại data từ server để đảm bảo consistency
+    await fetchUsers();
     toast.error(error.message || 'Không thể cập nhật thông tin người dùng');
   } finally {
     setIsSaving(false);
   }
 };
-
-
   
   // Get current user ID
   const currentUserId = user?.id || 0;
@@ -249,10 +272,6 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
           <p className="text-gray-600">Quản lý tất cả người dùng trong hệ thống</p>
         </div>
-        {/* <Button variant="outline" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Đăng xuất
-        </Button> */}
       </header>
       
       {/* Search and filters */}
@@ -266,10 +285,6 @@ export default function AdminDashboard() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        {/* <Button>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Thêm người dùng mới
-        </Button> */}
       </div>
       
       {/* Users table */}
@@ -298,159 +313,157 @@ export default function AdminDashboard() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.id}</TableCell>
-                    
-                    {/* Username cell */}
-                    <TableCell>
-                      {editingUserId === user.id ? (
-                        <Input 
-                          name="username"
-                          value={editFormData.username || ''}
-                          onChange={handleInputChange}
-                          className="w-full"
-                        />
-                      ) : (
-                        user.username
-                      )}
-                    </TableCell>
-                    
-                    {/* Email cell */}
-                    <TableCell>
-                      {editingUserId === user.id ? (
-                        <Input 
-                          name="email"
-                          value={editFormData.email || ''}
-                          onChange={handleInputChange}
-                          className="w-full"
-                        />
-                      ) : (
-                        user.email
-                      )}
-                    </TableCell>
-                    
-                    {/* Full name cell */}
-                    <TableCell>
-                      {editingUserId === user.id ? (
-                        <Input 
-                          name="fullName"
-                          value={editFormData.fullName || ''}
-                          onChange={handleInputChange}
-                          className="w-full"
-                        />
-                      ) : (
-                        user.fullName
-                      )}
-                    </TableCell>
-                    
-                    {/* Role cell */}
-                    <TableCell>
-                      {editingUserId === user.id ? (
-                        <Select
-                          value={editFormData.role}
-                          onValueChange={(value) => handleSelectChange('role', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Chọn vai trò" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">Admin</SelectItem>
-                            <SelectItem value="1">Staff</SelectItem>
-                            <SelectItem value="2">Customer</SelectItem>
-                            <SelectItem value="3">Shipper</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        user.role === 0 ? (
-                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                            Admin
-                          </span>
+                filteredUsers.map((user) => {
+                  const roleInfo = getRoleInfo(user.role);
+                  
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.id}</TableCell>
+                      
+                      {/* Username cell */}
+                      <TableCell>
+                        {editingUserId === user.id ? (
+                          <Input 
+                            name="username"
+                            value={editFormData.username || ''}
+                            onChange={handleInputChange}
+                            className="w-full"
+                          />
                         ) : (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                            Khách hàng
-                          </span>
-                        )
-                      )}
-                    </TableCell>
-                    
-                    {/* Status cell */}
-                    <TableCell>
-                      {editingUserId === user.id ? (
-                        <Select
-                          value={editFormData.isActive !== undefined ? String(editFormData.isActive) : undefined}
-                          onValueChange={(value) => handleSelectChange('isActive', value === 'true')}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Chọn trạng thái" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="true">Hoạt động</SelectItem>
-                            <SelectItem value="false">Đã khóa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        user.isActive ? (
-                          <span className="inline-flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                            <span className="text-green-700">Hoạt động</span>
-                          </span>
+                          user.username
+                        )}
+                      </TableCell>
+                      
+                      {/* Email cell */}
+                      <TableCell>
+                        {editingUserId === user.id ? (
+                          <Input 
+                            name="email"
+                            value={editFormData.email || ''}
+                            onChange={handleInputChange}
+                            className="w-full"
+                          />
                         ) : (
-                          <span className="inline-flex items-center">
-                            <XCircle className="h-4 w-4 text-red-500 mr-1" />
-                            <span className="text-red-700">Đã khóa</span>
+                          user.email
+                        )}
+                      </TableCell>
+                      
+                      {/* Full name cell */}
+                      <TableCell>
+                        {editingUserId === user.id ? (
+                          <Input 
+                            name="fullName"
+                            value={editFormData.fullName || ''}
+                            onChange={handleInputChange}
+                            className="w-full"
+                          />
+                        ) : (
+                          user.fullName
+                        )}
+                      </TableCell>
+                      
+                      {/* Role cell */}
+                      <TableCell>
+                        {editingUserId === user.id ? (
+                          <Select
+                            value={editFormData.role}
+                            onValueChange={(value) => handleSelectChange('role', value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Chọn vai trò" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">Admin</SelectItem>
+                              <SelectItem value="1">Staff</SelectItem>
+                              <SelectItem value="2">Customer</SelectItem>
+                              <SelectItem value="3">Shipper</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className={`px-2 py-1 ${roleInfo.bgColor} ${roleInfo.textColor} rounded-full text-xs font-medium`}>
+                            {roleInfo.name}
                           </span>
-                        )
-                      )}
-                    </TableCell>
-                    
-                    {/* Created date cell - not editable */}
-                    <TableCell>
-                      {new Date(user.createdAt).toLocaleDateString('vi-VN')}
-                    </TableCell>
-                    
-                    {/* Action buttons cell */}
-                    <TableCell className="text-right">
-                      {editingUserId === user.id ? (
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={handleCancelEdit}
+                        )}
+                      </TableCell>
+                      
+                      {/* Status cell */}
+                      <TableCell>
+                        {editingUserId === user.id ? (
+                          <Select
+                            value={editFormData.isActive !== undefined ? String(editFormData.isActive) : undefined}
+                            onValueChange={(value) => handleSelectChange('isActive', value === 'true')}
                           >
-                            <X className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={handleSaveChanges}
-                            disabled={isSaving}
-                          >
-                            {isSaving ? 'Đang lưu...' : <Save className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditClick(user)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => confirmDelete(user)}
-                            disabled={user.id === currentUserId}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Chọn trạng thái" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">Hoạt động</SelectItem>
+                              <SelectItem value="false">Đã khóa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          user.isActive ? (
+                            <span className="inline-flex items-center">
+                              <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                              <span className="text-green-700">Hoạt động</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center">
+                              <XCircle className="h-4 w-4 text-red-500 mr-1" />
+                              <span className="text-red-700">Đã khóa</span>
+                            </span>
+                          )
+                        )}
+                      </TableCell>
+                      
+                      {/* Created date cell - not editable */}
+                      <TableCell>
+                        {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                      </TableCell>
+                      
+                      {/* Action buttons cell */}
+                      <TableCell className="text-right">
+                        {editingUserId === user.id ? (
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={handleSaveChanges}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? 'Đang lưu...' : <Save className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditClick(user)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => confirmDelete(user)}
+                              disabled={user.id === currentUserId}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
