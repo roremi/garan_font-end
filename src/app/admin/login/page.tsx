@@ -78,20 +78,9 @@ export default function AdminLogin() {
   try {
     const userProfile = await authService.getProfile();
 
-    // Gọi API lấy quyền
-    const token = localStorage.getItem('app_token')?.replace(/^"(.*)"$/, '$1');
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-      const res = await fetch(`${API_URL}/admin/user-permissions/${userProfile.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    const data = await res.json();
-
-    const userPermissions = data.permissions || [];
-
     // ✅ Điều kiện cho phép vào Admin:
-    // - Là Admin role (role === 0)
-    // - Hoặc có ít nhất 1 quyền
-    if (Number(userProfile.role) === 0 || userPermissions.length > 0) {
+    // - Chỉ kiểm tra role: Admin (role === 0) hoặc Staff (role === 1)
+    if (Number(userProfile.role) === 0 || Number(userProfile.role) === 1) {
       login({
         id: userProfile.id,
         username: userProfile.username,
@@ -101,15 +90,16 @@ export default function AdminLogin() {
         role: Number(userProfile.role)
       });
 
-      toast.success('Đăng nhập Admin thành công!');
+      const roleText = Number(userProfile.role) === 0 ? 'Admin' : 'Staff';
+      toast.success(`Đăng nhập ${roleText} thành công!`);
       localStorage.setItem('adminToken', 'dummy-token');
       router.push('/admin/dashboard');
     } else {
       authService.logout();
-      setError('Tài khoản không có quyền vào trang Admin');
+      setError('Tài khoản không có quyền vào trang Admin. Chỉ Admin và Staff mới được phép truy cập.');
     }
   } catch (error: any) {
-    setError('Không thể lấy thông tin người dùng hoặc quyền');
+    setError('Không thể lấy thông tin người dùng');
   }
 };
 

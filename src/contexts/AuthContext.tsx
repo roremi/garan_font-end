@@ -38,7 +38,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (userData: Omit<User, 'id'> & { id?: number }) => void;
   logout: () => void;
-  permissions: string[];
   updateProfile: (data: Partial<User>) => Promise<void>;
   getTwoFactorStatus: () => Promise<TwoFactorStatusDto>;
   setupTwoFactor: () => Promise<SetupTwoFactorResponseDto>;
@@ -56,15 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   
   
-useEffect(() => {
-  const fetchPermissions = async () => {
-    if (user) {
-      const res = await api.getUserPermissions(user.id);
-      setPermissions(res.permissions || []);
-    }
-  };
-  fetchPermissions();
-}, [user]);
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -244,7 +235,6 @@ useEffect(() => {
     <AuthContext.Provider 
       value={{ 
         user, 
-        permissions,
         isLoading, 
         isAuthenticated,
         login, 

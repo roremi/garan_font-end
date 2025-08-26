@@ -17,20 +17,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSignalR } from '@/hooks/useSignalR';
 
 const menuItems = [
-  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', requiredPermission: 'permission_view_dashboard' },
-  { title: 'Quản lý sản phẩm', icon: ShoppingBag, path: '/admin/products', requiredPermission: 'permission_view_product' },
-  { title: 'Quản lý danh mục', icon: FolderOpen, path: '/admin/Category', requiredPermission: 'permission_view_category' },
-  { title: 'Quản lý nhóm Combo', icon: Layers, path: '/admin/ComboCategory', requiredPermission: 'permission_view_combocategory' },
-  { title: 'Quản lý Combo', icon: FolderOpen, path: '/admin/Combo', requiredPermission: 'permission_view_combo' },
-  { title: 'Quản lý đơn hàng', icon: ShoppingBag, path: '/admin/orders', requiredPermission: 'permission_view_order' },
-  { title: 'Quản lý voucher', icon: TicketPercent, path: '/admin/Voucher', requiredPermission: 'permission_view_voucher' },
-  { title: 'Quản lý shipping', icon: TicketPercent, path: '/admin/Shipping', requiredPermission: 'permission_view_shipping' },
-  { title: 'Quản lý người dùng', icon: Users, path: '/admin/users', requiredPermission: 'permission_view_allprofile' },
-  { title: 'Quản lý quyền', icon: Edit2Icon, path: '/admin/permissions', requiredPermission: 'permission_view_admin_page' },
-  { title: 'Quản lý Driver', icon: Users, path: '/admin/driver', requiredPermission: 'permission_view_driver' },
-  { title: 'Feedback & Khiếu nại', icon: AlertTriangle, path: '/admin/feedback', requiredPermission: 'permission_view_admin_page' },
-  { title: 'Quản lý tin nhắn', icon: MessageCircle, path: '/admin/chat', requiredPermission: 'permission_manager_chat' },
-  { title: 'Marketing', icon: Boxes, path: '/admin/maketting', requiredPermission: 'permission_view_admin_page' }
+  { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', allowedRoles: [0, 1] }, // Admin & Staff
+  { title: 'Quản lý sản phẩm', icon: ShoppingBag, path: '/admin/products', allowedRoles: [0] }, // Admin & Staff
+  { title: 'Quản lý danh mục', icon: FolderOpen, path: '/admin/Category', allowedRoles: [0] }, // Admin & Staff
+  { title: 'Quản lý nhóm Combo', icon: Layers, path: '/admin/ComboCategory', allowedRoles: [0] }, // Admin & Staff
+  { title: 'Quản lý Combo', icon: FolderOpen, path: '/admin/Combo', allowedRoles: [0] }, // Admin & Staff
+  { title: 'Quản lý đơn hàng', icon: ShoppingBag, path: '/admin/orders', allowedRoles: [0, 1] }, // Admin & Staff
+  { title: 'Quản lý voucher', icon: TicketPercent, path: '/admin/Voucher', allowedRoles: [0] }, // Admin & Staff
+  { title: 'Quản lý shipping', icon: TicketPercent, path: '/admin/Shipping', allowedRoles: [0, 1] }, // Admin & Staff
+  { title: 'Quản lý người dùng', icon: Users, path: '/admin/users', allowedRoles: [0] }, // Chỉ Admin
+  { title: 'Quản lý Driver', icon: Users, path: '/admin/driver', allowedRoles: [0, 1] }, // Admin & Staff
+  { title: 'Feedback & Khiếu nại', icon: AlertTriangle, path: '/admin/feedback', allowedRoles: [0] }, // Chỉ Admin
+  { title: 'Quản lý tin nhắn', icon: MessageCircle, path: '/admin/chat', allowedRoles: [0, 1] }, // Admin & Staff
+  { title: 'Marketing', icon: Boxes, path: '/admin/maketting', allowedRoles: [0,1] } // Chỉ Admin
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -39,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { permissions, user } = useAuth();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<{ message: string; time: string }[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { onNewOrder } = useSignalR(user?.id || 0, user?.fullName || '');
@@ -92,14 +91,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push('/admin/login');
   };
 
-  const canView = (perm: string) => permissions.includes(perm);
+  // ✅ Kiểm tra quyền truy cập dựa trên role
+  const canAccessMenuItem = (allowedRoles: number[]) => {
+    if (!user) return false;
+    return allowedRoles.includes(Number(user.role));
+  };
+
   if (!isAuthenticated) return null;
   if (pathname === '/admin/login') return children;
 
-  const visibleMenuItems =
-    user && Number(user.role) === 0
-      ? menuItems
-      : menuItems.filter(item => canView(item.requiredPermission));
+  // ✅ Lọc menu items dựa trên role của user
+  const visibleMenuItems = menuItems.filter(item => canAccessMenuItem(item.allowedRoles));
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       return;
     }
     
-    if (Number(user.role) !== 0) {
+    if (Number(user.role) !== 0 && Number(user.role) !== 1) {
       toast.error('Bạn không có quyền truy cập trang Admin');
       router.push('/');
       return;
@@ -356,7 +356,9 @@ export default function AdminDashboard() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="0">Admin</SelectItem>
-                            <SelectItem value="1">Khách hàng</SelectItem>
+                            <SelectItem value="1">Staff</SelectItem>
+                            <SelectItem value="2">Customer</SelectItem>
+                            <SelectItem value="3">Shipper</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
