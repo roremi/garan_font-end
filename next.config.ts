@@ -4,9 +4,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   
   images: {
     unoptimized: false,
@@ -34,8 +31,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       }
     ],
-    // Keep domains for backward compatibility
-    domains: ['localhost', 'api.garancuctac.com', 'img.vietqr.io'],
   },
   
   async rewrites() {
